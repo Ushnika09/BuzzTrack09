@@ -88,13 +88,38 @@ export default function Home() {
     toast.success('Dashboard updated');
   };
 
+  // Widgets with data-tour attributes
   const widgets = {
-    stats: <StatCard brand={selectedBrand} />,
-    spike: <SpikeAlert brand={selectedBrand} />,
-    sentiment: <SentimentChart brand={selectedBrand} />,
-    volume: <VolumeChart brand={selectedBrand} />,
-    sources: <SourceBreakdown brand={selectedBrand} />,
-    feed: <MentionFeed brand={selectedBrand} />,
+    stats: (
+      <div data-tour="stats">
+        <StatCard brand={selectedBrand} />
+      </div>
+    ),
+    spike: (
+      <div data-tour="spike">
+        <SpikeAlert brand={selectedBrand} />
+      </div>
+    ),
+    sentiment: (
+      <div data-tour="sentiment">
+        <SentimentChart brand={selectedBrand} />
+      </div>
+    ),
+    volume: (
+      <div data-tour="volume">
+        <VolumeChart brand={selectedBrand} />
+      </div>
+    ),
+    sources: (
+      <div data-tour="sources">
+        <SourceBreakdown brand={selectedBrand} />
+      </div>
+    ),
+    feed: (
+      <div data-tour="feed">
+        <MentionFeed brand={selectedBrand} />
+      </div>
+    ),
   };
 
   const bgClass = theme === 'dark' ? 'bg-slate-900' : 'bg-slate-50';
@@ -120,7 +145,11 @@ export default function Home() {
   if (brands.length === 0) {
     return (
       <>
-        <EmptyState type="noBrands" action={() => setShowAddModal(true)} actionLabel="Add Your First Brand" />
+        <EmptyState 
+          type="noBrands" 
+          action={() => setShowAddModal(true)} 
+          actionLabel="Add Your First Brand" 
+        />
         <AddBrandModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} />
       </>
     );
@@ -139,7 +168,10 @@ export default function Home() {
                 Real-time insights for <span className="font-semibold text-blue-500">{selectedBrand}</span>
               </p>
             </div>
+            
+            {/* Add Brand Button with Tour Target */}
             <button
+              data-tour="add-brand"
               onClick={() => setShowAddModal(true)}
               className="flex items-center gap-2.5 px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-lg shadow-blue-600/20 hover:shadow-xl transition-all hover:scale-105 active:scale-95"
             >
@@ -147,8 +179,11 @@ export default function Home() {
             </button>
           </div>
 
-          {/* Brand Pills */}
-          <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-hide">
+          {/* Brand Pills with Tour Target */}
+          <div 
+            data-tour="brand-pills"
+            className="flex gap-3 overflow-x-auto pb-3 scrollbar-hide"
+          >
             {brands.map((brand) => (
               <button
                 key={brand}
@@ -165,7 +200,7 @@ export default function Home() {
             ))}
           </div>
 
-          {/* Transparent Drag & Drop Grid */}
+          {/* Drag & Drop Widget Grid */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             {widgetOrder.map((widgetKey) => (
               <div
@@ -178,7 +213,6 @@ export default function Home() {
                 onDrop={(e) => handleDrop(e, widgetKey)}
                 className={`
                   widget-item relative group rounded-2xl overflow-hidden
-                  
                   transition-all duration-300
                   ${widgetKey === 'feed' ? 'xl:col-span-2' : ''}
                   ${draggedWidget === widgetKey ? 'opacity-50 scale-98' : ''}
@@ -187,7 +221,11 @@ export default function Home() {
                 `}
               >
                 {/* Floating Drag Handle */}
-                <div className={`absolute top-4 right-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity p-2 rounded-lg ${cardBg} border ${borderClass} shadow-lg backdrop-blur`}>
+                <div className={`
+                  absolute top-4 right-4 z-10 opacity-0 group-hover:opacity-100 
+                  transition-opacity p-2 rounded-lg ${cardBg} border ${borderClass} 
+                  shadow-lg backdrop-blur cursor-grab active:cursor-grabbing
+                `}>
                   <GripVertical className="w-5 h-5 text-slate-500" />
                 </div>
 
