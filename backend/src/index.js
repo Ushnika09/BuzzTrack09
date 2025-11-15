@@ -9,11 +9,16 @@ import { startDataCollection } from './services/dataCollector.js';
 
 dotenv.config();
 
-// console.log('   PORT:', process.env.PORT);
-// console.log('   NEWS_API_KEY:', process.env.NEWS_API_KEY ? `Set (${process.env.NEWS_API_KEY.substring(0, 8)}...)` : 'MISSING');
+// 1️⃣ DEFINE allowedOrigins FIRST
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://buzztrack.netlify.app"
+];
 
 const app = express();
 const server = http.createServer(app);
+
+// 2️⃣ SOCKET.IO (after allowedOrigins)
 const io = new Server(server, {
   cors: {
     origin: allowedOrigins,
@@ -21,13 +26,7 @@ const io = new Server(server, {
   }
 });
 
-
-// Middleware
-const allowedOrigins = [
-  "http://localhost:5173",
-  "https://buzztrack.netlify.app"
-];
-
+// 3️⃣ EXPRESS CORS
 app.use(cors({
   origin: allowedOrigins,
   methods: ["GET", "POST", "PUT", "DELETE"],
@@ -45,20 +44,17 @@ global.activeSubscriptions = new Map();
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
 
-  socket.on('subscribe', (data) => {
-    const { brand } = data;
-    console.log(`Client ${socket.id} subscribed to brand: ${brand}`);
-    
+  socket.on('subscribe', ({ brand }) => {
+    console.log(`Client ${socket.id} subscribed to: ${brand}`);
+
     if (!global.activeSubscriptions.has(brand)) {
       global.activeSubscriptions.set(brand, new Set());
     }
     global.activeSubscriptions.get(brand).add(socket.id);
-    
     socket.join(brand);
   });
 
-  socket.on('unsubscribe', (data) => {
-    const { brand } = data;
+  socket.on('unsubscribe', ({ brand }) => {
     if (global.activeSubscriptions.has(brand)) {
       global.activeSubscriptions.get(brand).delete(socket.id);
     }
@@ -67,36 +63,33 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
-    // Clean up subscriptions
-    global.activeSubscriptions.forEach((sockets, brand) => {
-      sockets.delete(socket.id);
-    });
+    global.activeSubscriptions.forEach((set) => set.delete(socket.id));
   });
 });
 
-// Routes
+// API routes
 app.use('/api', apiRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({
+    status: "ok",
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Error handling
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ 
-    error: 'Something went wrong!',
-    message: err.message 
+  res.status(500).json({
+    error: "Something went wrong!",
+    message: err.message
   });
 });
 
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
-  // console.log(`🚀 BuzzTrack server running on port ${PORT}`);
   console.log(`📊 Dashboard: http://localhost:${PORT}`);
-  
-  // Start data collection after server starts
   startDataCollection();
 });
