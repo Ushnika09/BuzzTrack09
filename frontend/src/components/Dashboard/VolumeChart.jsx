@@ -1,32 +1,47 @@
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useMentions } from '../../hooks/useMentions';
 import { ChartSkeleton } from '../UI/Skeleton';
 import EmptyState from '../UI/EmptyState';
 import { useMemo, useState } from 'react';
+import { useTheme } from '../../context/ThemeContext';
+import { Calendar, TrendingUp, BarChart3, Clock } from 'lucide-react';
 
 // Timeframe options for the filter
 const TIMEFRAME_OPTIONS = [
-  { value: '1h', label: 'Last 1 Hour' },
-  { value: '6h', label: 'Last 6 Hours' },
-  { value: '24h', label: 'Last 24 Hours' },
-  { value: '7d', label: 'Last 7 Days' },
-  { value: '30d', label: 'Last 30 Days' }
+  { value: '1h', label: '1H', fullLabel: 'Last 1 Hour' },
+  { value: '6h', label: '6H', fullLabel: 'Last 6 Hours' },
+  { value: '24h', label: '24H', fullLabel: 'Last 24 Hours' },
+  { value: '7d', label: '7D', fullLabel: 'Last 7 Days' },
+  { value: '30d', label: '30D', fullLabel: 'Last 30 Days' }
 ];
 
-// Timeframe filter component
-const TimeframeFilter = ({ value, onChange }) => {
+// Enhanced Timeframe Filter with better styling
+const TimeframeFilter = ({ value, onChange, theme }) => {
   return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 text-sm"
-    >
+    <div className={`
+      flex items-center gap-1 p-1 rounded-xl
+      ${theme === 'dark' ? 'bg-slate-700' : 'bg-slate-100'}
+    `}>
       {TIMEFRAME_OPTIONS.map(option => (
-        <option key={option.value} value={option.value}>
+        <button
+          key={option.value}
+          onClick={() => onChange(option.value)}
+          className={`
+            px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200
+            ${value === option.value
+              ? theme === 'dark'
+                ? 'bg-blue-600 text-white shadow-lg'
+                : 'bg-blue-600 text-white shadow-lg'
+              : theme === 'dark'
+                ? 'text-slate-300 hover:text-white hover:bg-slate-600'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+            }
+          `}
+        >
           {option.label}
-        </option>
+        </button>
       ))}
-    </select>
+    </div>
   );
 };
 
@@ -102,7 +117,6 @@ const groupDataByTimeframe = (mentions, timeframe) => {
   return Object.entries(grouped)
     .map(([date, count]) => ({ date, count }))
     .sort((a, b) => {
-      // Parse back to date for proper sorting
       try {
         const dateA = parseDateFromLabel(a.date, timeframe);
         const dateB = parseDateFromLabel(b.date, timeframe);
@@ -111,7 +125,7 @@ const groupDataByTimeframe = (mentions, timeframe) => {
         return 0;
       }
     })
-    .filter(item => item.count > 0 || timeframe === '1h' || timeframe === '6h'); // Show all intervals for short timeframes
+    .filter(item => item.count > 0 || timeframe === '1h' || timeframe === '6h');
 };
 
 // Helper to parse date from formatted label
@@ -119,7 +133,6 @@ const parseDateFromLabel = (label, timeframe) => {
   const now = new Date();
   
   if (timeframe === '1h' || timeframe === '6h' || timeframe === '24h') {
-    // Time formats - assume today
     const [time, modifier] = label.split(' ');
     let [hours, minutes] = time.split(':');
     hours = parseInt(hours);
@@ -131,7 +144,6 @@ const parseDateFromLabel = (label, timeframe) => {
     date.setHours(hours, minutes ? parseInt(minutes) : 0, 0, 0);
     return date;
   } else {
-    // Date formats
     return new Date(label);
   }
 };
@@ -148,8 +160,30 @@ const getTimeframeMs = (timeframe) => {
   return timeframes[timeframe] || timeframes['24h'];
 };
 
+// Custom Tooltip Component
+const CustomTooltip = ({ active, payload, label, theme }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className={`
+        p-3 rounded-lg shadow-xl border backdrop-blur-sm
+        ${theme === 'dark' 
+          ? 'bg-slate-800 border-slate-600 text-white' 
+          : 'bg-white border-slate-200 text-slate-900'
+        }
+      `}>
+        <p className="font-semibold">{label}</p>
+        <p className="text-sm">
+          <span className="font-medium">{payload[0].value}</span> mentions
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function VolumeChart({ brand, initialTimeframe = '24h', onTimeframeChange }) {
   const [selectedTimeframe, setSelectedTimeframe] = useState(initialTimeframe);
+  const { theme } = useTheme();
   
   // Calculate start date based on timeframe
   const startDate = useMemo(() => getStartDate(selectedTimeframe), [selectedTimeframe]);
@@ -157,7 +191,7 @@ export default function VolumeChart({ brand, initialTimeframe = '24h', onTimefra
   const { data, isLoading, error } = useMentions({ 
     brand,
     startDate,
-    limit: 2000 // Increased limit for longer timeframes
+    limit: 2000
   });
 
   // Handle timeframe change
@@ -198,10 +232,15 @@ export default function VolumeChart({ brand, initialTimeframe = '24h', onTimefra
   // Group mentions by appropriate time intervals based on timeframe
   const chartData = groupDataByTimeframe(mentions, selectedTimeframe);
 
-  // Format tooltip based on timeframe
-  const formatTooltipLabel = (date) => {
-    return `Time: ${date}`;
-  };
+  // Calculate stats for summary
+  const totalMentions = mentions.length;
+  const peakMention = Math.max(...chartData.map(item => item.count));
+  const averageMentions = Math.round(totalMentions / chartData.length);
+
+  // Get gradient colors based on theme
+  const barGradient = theme === 'dark' 
+    ? ['#60a5fa', '#3b82f6', '#2563eb'] 
+    : ['#93c5fd', '#3b82f6', '#1d4ed8'];
 
   // If no data points after grouping, show empty state
   if (chartData.length === 0) {
@@ -216,62 +255,150 @@ export default function VolumeChart({ brand, initialTimeframe = '24h', onTimefra
   }
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+    <div className={`
+      rounded-2xl border shadow-lg transition-all duration-300
+      ${theme === 'dark' 
+        ? 'bg-slate-800 border-slate-700' 
+        : 'bg-white border-slate-200'
+      }
+      p-6 hover:shadow-xl
+    `}>
+      {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-          Mention Volume
-        </h3>
+        <div className="flex items-center gap-3">
+          <div className={`
+            w-10 h-10 rounded-xl flex items-center justify-center
+            bg-gradient-to-br from-blue-500 to-cyan-500
+            shadow-lg
+          `}>
+            <BarChart3 className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h3 className={`
+              text-lg font-semibold
+              ${theme === 'dark' ? 'text-white' : 'text-slate-900'}
+            `}>
+              Mention Volume
+            </h3>
+            <p className={`
+              text-sm
+              ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}
+            `}>
+              Mentions over time
+            </p>
+          </div>
+        </div>
+        
         <TimeframeFilter 
           value={selectedTimeframe} 
           onChange={handleTimeframeChange}
+          theme={theme}
         />
       </div>
       
+      {/* Chart */}
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+          <BarChart data={chartData} margin={{ top: 20, right: 20, left: 0, bottom: 20 }}>
+            <CartesianGrid 
+              strokeDasharray="3 3" 
+              stroke={theme === 'dark' ? '#475569' : '#e2e8f0'} 
+              opacity={0.5}
+            />
             <XAxis 
               dataKey="date" 
-              tick={{ fontSize: 11 }}
+              tick={{ 
+                fontSize: 11,
+                fill: theme === 'dark' ? '#cbd5e1' : '#64748b'
+              }}
               interval="preserveStartEnd"
               angle={-45}
               textAnchor="end"
               height={60}
+              stroke={theme === 'dark' ? '#475569' : '#cbd5e1'}
             />
-            <YAxis tick={{ fontSize: 12 }} />
-            <Tooltip 
-              labelFormatter={formatTooltipLabel}
-              formatter={(value) => [`${value} mentions`, 'Volume']}
-              contentStyle={{ 
-                backgroundColor: 'white',
-                border: '1px solid #e2e8f0',
-                borderRadius: '8px'
+            <YAxis 
+              tick={{ 
+                fontSize: 12,
+                fill: theme === 'dark' ? '#cbd5e1' : '#64748b'
               }}
+              stroke={theme === 'dark' ? '#475569' : '#cbd5e1'}
             />
+            <Tooltip content={<CustomTooltip theme={theme} />} />
             <Bar 
               dataKey="count" 
-              fill="#3b82f6" 
               radius={[4, 4, 0, 0]}
               className="hover:opacity-80 transition-opacity"
-            />
+            >
+              {chartData.map((entry, index) => (
+                <Cell 
+                  key={`cell-${index}`}
+                  fill={barGradient[index % barGradient.length]}
+                />
+              ))}
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Chart summary */}
-      <div className="mt-4 flex items-center justify-between text-sm text-slate-600 dark:text-slate-400">
-        <span>
-          Total: <strong className="text-slate-900 dark:text-white">{mentions.length}</strong> mentions
-        </span>
-        <span>
-          Data Points: <strong className="text-slate-900 dark:text-white">{chartData.length}</strong>
-        </span>
-        <span>
-          Period: <strong className="text-slate-900 dark:text-white">
-            {TIMEFRAME_OPTIONS.find(opt => opt.value === selectedTimeframe)?.label}
-          </strong>
-        </span>
+      {/* Enhanced Summary Stats */}
+      <div className={`
+        mt-6 pt-4 border-t
+        ${theme === 'dark' ? 'border-slate-700' : 'border-slate-200'}
+      `}>
+        <div className="grid grid-cols-3 gap-4 text-center">
+          <div>
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <TrendingUp className="w-4 h-4 text-blue-500" />
+              <span className={`
+                text-lg font-bold
+                ${theme === 'dark' ? 'text-white' : 'text-slate-900'}
+              `}>
+                {peakMention}
+              </span>
+            </div>
+            <div className={`
+              text-xs
+              ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}
+            `}>
+              Peak
+            </div>
+          </div>
+          <div>
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <BarChart3 className="w-4 h-4 text-green-500" />
+              <span className={`
+                text-lg font-bold
+                ${theme === 'dark' ? 'text-white' : 'text-slate-900'}
+              `}>
+                {averageMentions}
+              </span>
+            </div>
+            <div className={`
+              text-xs
+              ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}
+            `}>
+              Average
+            </div>
+          </div>
+          <div>
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <Clock className="w-4 h-4 text-purple-500" />
+              <span className={`
+                text-lg font-bold
+                ${theme === 'dark' ? 'text-white' : 'text-slate-900'}
+              `}>
+                {totalMentions}
+              </span>
+            </div>
+            <div className={`
+              text-xs
+              ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}
+            `}>
+              Total
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

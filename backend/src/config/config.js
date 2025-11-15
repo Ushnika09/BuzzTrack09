@@ -8,7 +8,7 @@ export default {
   intervals: {
     reddit: 60000,      // 1 minute
     news: 120000,       // 2 minutes
-    twitter: 90000,     // 1.5 minutes
+    // twitter: 90000,     // 1.5 minutes
     spikeCheck: 300000  // 5 minutes for spike monitoring
   },
   
