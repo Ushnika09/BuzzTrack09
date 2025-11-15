@@ -3,7 +3,7 @@ export default {
   port: process.env.PORT || 5000,
   
   // API Keys
-  newsApiKey: process.env.NEWS_API_KEY || '',
+  newsApiKey: process.env.NEWS_API_KEY,
   
   // Data collection intervals (in milliseconds)
   intervals: {

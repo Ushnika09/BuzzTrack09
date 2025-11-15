@@ -8,6 +8,14 @@ import {
   getTrackedBrands,
   triggerCollection 
 } from '../services/dataCollector.js';
+// Add these topic analysis imports
+import { 
+  extractTopics, 
+  clusterByTopic, 
+  getTrendingTopics,
+  getTopicTimeline,
+  compareTopicsAcrossBrands 
+} from '../services/topicAnalyzer.js';
 
 
 // Add this right after the imports, before the routes
@@ -36,6 +44,16 @@ function parseTimeframe(timeframe) {
 function getTimeframeDate(timeframe = '24h') {
   const ms = parseTimeframe(timeframe);
   return new Date(Date.now() - ms).toISOString();
+}
+
+// Helper function to get dominant sentiment
+function getDominantSentiment(sentimentCounts) {
+  if (!sentimentCounts) return 'neutral';
+  
+  const max = Math.max(sentimentCounts.positive, sentimentCounts.neutral, sentimentCounts.negative);
+  if (max === sentimentCounts.positive) return 'positive';
+  if (max === sentimentCounts.negative) return 'negative';
+  return 'neutral';
 }
 
 const router = express.Router();
@@ -117,7 +135,7 @@ router.get('/mentions/:id', (req, res) => {
 
 /**
  * GET /api/stats
- * Get statistics for a brand
+ * Get statistics for a brand - FIXED VERSION
  */
 router.get('/stats', (req, res) => {
   try {
@@ -130,16 +148,37 @@ router.get('/stats', (req, res) => {
       });
     }
 
+    // Use the mentionStore's getStats method directly
     const stats = mentionStore.getStats(brand, timeframe);
 
-    res.json({
+    console.log(`📊 API /stats for ${brand}:`, {
+      total: stats.total,
+      sources: stats.sources,
+      sentiment: stats.sentiment
+    });
+
+    // Ensure sources object has all expected properties
+    const ensuredSources = {
+      reddit: stats.sources?.reddit || 0,
+      news: stats.sources?.news || 0,
+      twitter: stats.sources?.twitter || 0
+    };
+
+    const response = {
       success: true,
       brand,
       timeframe,
-      stats
-    });
+      stats: {
+        ...stats,
+        sources: ensuredSources // Use the ensured sources
+      }
+    };
+
+    console.log(`📤 Sending response for ${brand}:`, response.stats.sources);
+    res.json(response);
 
   } catch (error) {
+    console.error('❌ Error in /stats route:', error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -504,59 +543,25 @@ router.get('/stats/sources-comparison', (req, res) => {
   }
 });
 
-// Helper function to get dominant sentiment
-function getDominantSentiment(sentimentCounts) {
-  if (!sentimentCounts) return 'neutral';
-  
-  const max = Math.max(sentimentCounts.positive, sentimentCounts.neutral, sentimentCounts.negative);
-  if (max === sentimentCounts.positive) return 'positive';
-  if (max === sentimentCounts.negative) return 'negative';
-  return 'neutral';
-}
-
-
-
-//  Test route
-
 /**
- * GET /api/debug/news
- * Test News API connection
+ * GET /api/topics/trending
+ * Get trending topics across all brands
  */
-router.get('/debug/news', async (req, res) => {
+router.get('/topics/trending', (req, res) => {
   try {
-    const { brand = 'Apple' } = req.query;
+    const { timeframe = '24h', limit = 10 } = req.query;
+    const brands = getTrackedBrands();
     
-    // Test News API directly
-    const response = await fetch(`https://newsapi.org/v2/everything?q=${brand}&pageSize=5&sortBy=publishedAt&language=en`, {
-      headers: {
-        'X-Api-Key': process.env.NEWS_API_KEY || ''
-      }
-    });
+    const trendingTopics = getTrendingTopics(brands, timeframe, parseInt(limit));
 
-    if (!response.ok) {
-      const error = await response.json();
-      return res.json({
-        success: false,
-        error: `News API error: ${error.message || response.status}`,
-        status: response.status
-      });
-    }
-
-    const data = await response.json();
-    
     res.json({
       success: true,
-      apiKey: process.env.NEWS_API_KEY ? 'Set' : 'Missing',
-      totalResults: data.totalResults,
-      articles: data.articles?.map(a => ({
-        title: a.title,
-        source: a.source.name,
-        publishedAt: a.publishedAt
-      })) || []
+      timeframe,
+      trendingTopics
     });
 
   } catch (error) {
-    res.json({
+    res.status(500).json({
       success: false,
       error: error.message
     });
@@ -564,88 +569,136 @@ router.get('/debug/news', async (req, res) => {
 });
 
 /**
- * GET /api/debug/news-detailed
- * Comprehensive News API debugging
+ * GET /api/topics/brand/:brand
+ * Get topics for a specific brand
  */
-router.get('/debug/news-detailed', async (req, res) => {
+router.get('/topics/brand/:brand', (req, res) => {
   try {
-    const { brand = 'Tesla' } = req.query;
-    const apiKey = process.env.NEWS_API_KEY;
-    
-    console.log('🔑 API Key from env:', apiKey ? `Set (${apiKey.substring(0, 8)}...)` : 'MISSING');
-    console.log('🔍 Searching for brand:', brand);
+    const { brand } = req.params;
+    const { timeframe = '24h', limit = 15 } = req.query;
 
-    // Test 1: Check if environment is loading
-    if (!apiKey) {
-      return res.json({
-        success: false,
-        error: 'API key not found in environment variables',
-        envKeys: Object.keys(process.env).filter(key => key.includes('NEWS') || key.includes('API'))
-      });
-    }
-
-    // Test 2: Make direct API call
-    const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(brand)}&pageSize=2&sortBy=publishedAt&language=en`;
-    console.log('🌐 Making request to:', url);
-
-    const response = await fetch(url, {
-      headers: {
-        'X-Api-Key': apiKey,
-        'User-Agent': 'BuzzTrack/1.0'
-      }
+    const mentions = mentionStore.getAll({
+      brand,
+      startDate: getTimeframeDate(timeframe)
     });
 
-    console.log('📡 Response status:', response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.log('❌ Error response:', errorText);
-      
-      let errorData;
-      try {
-        errorData = JSON.parse(errorText);
-      } catch (e) {
-        errorData = { message: errorText };
-      }
-
-      return res.json({
-        success: false,
-        status: response.status,
-        statusText: response.statusText,
-        error: errorData.message || 'Unknown error',
-        fullError: errorData
-      });
-    }
-
-    // Test 3: Parse successful response
-    const data = await response.json();
-    console.log('✅ Success! Total results:', data.totalResults);
+    const topics = extractTopics(mentions, parseInt(limit));
 
     res.json({
       success: true,
-      apiKeyStatus: 'Valid',
-      totalResults: data.totalResults,
-      articles: data.articles?.map(a => ({
-        title: a.title,
-        source: a.source.name,
-        publishedAt: a.publishedAt,
-        url: a.url
-      })) || [],
-      requestDetails: {
-        url,
-        brand,
-        apiKeyLength: apiKey.length
-      }
+      brand,
+      timeframe,
+      topics
     });
 
   } catch (error) {
-    console.log('💥 Unexpected error:', error.message);
-    res.json({
+    res.status(500).json({
       success: false,
-      error: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      error: error.message
     });
   }
 });
+
+/**
+ * GET /api/topics/clusters
+ * Get clustered mentions by topic
+ */
+router.get('/topics/clusters', (req, res) => {
+  try {
+    const { brand, timeframe = '24h' } = req.query;
+
+    if (!brand) {
+      return res.status(400).json({
+        success: false,
+        error: 'Brand parameter is required'
+      });
+    }
+
+    const mentions = mentionStore.getAll({
+      brand,
+      startDate: getTimeframeDate(timeframe)
+    });
+
+    const clusters = clusterByTopic(mentions);
+
+    res.json({
+      success: true,
+      brand,
+      timeframe,
+      clusters
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/topics/timeline
+ * Get topic timeline for a brand
+ */
+router.get('/topics/timeline', (req, res) => {
+  try {
+    const { brand, days = 7 } = req.query;
+
+    if (!brand) {
+      return res.status(400).json({
+        success: false,
+        error: 'Brand parameter is required'
+      });
+    }
+
+    const timeline = getTopicTimeline(brand, parseInt(days));
+
+    res.json({
+      success: true,
+      brand,
+      timeline
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/topics/comparison
+ * Compare topics across multiple brands
+ */
+router.get('/topics/comparison', (req, res) => {
+  try {
+    const { brands, timeframe = '24h' } = req.query;
+    
+    let brandList;
+    if (brands) {
+      brandList = brands.split(',');
+    } else {
+      brandList = getTrackedBrands();
+    }
+
+    const comparison = compareTopicsAcrossBrands(brandList, timeframe);
+
+    res.json({
+      success: true,
+      brands: brandList,
+      timeframe,
+      comparison
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+
 
 export default router;

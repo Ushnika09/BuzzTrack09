@@ -1,4 +1,3 @@
-// server/src/sources/newsAPI.js
 import fetch from 'node-fetch';
 import config from '../config/config.js';
 import { Mention } from '../models/Mention.js';
@@ -8,13 +7,16 @@ import { analyzeSentimentWithContext } from '../services/sentimentAnalyzer.js';
  * Fetch news mentions using News API
  */
 export async function fetchNewsMentions(brandName, limit = 20) {
-  if (!config.sources.news.enabled || !config.newsApiKey) {
+  // FIX: Use environment variable directly to bypass config caching issue
+  const apiKey = process.env.NEWS_API_KEY || config.newsApiKey;
+  
+  if (!config.sources.news.enabled || !apiKey) {
     console.log('⚠️  News API disabled or no API key configured');
     return [];
   }
 
   try {
-    const mentions = await searchNews(brandName, limit);
+    const mentions = await searchNews(brandName, limit, apiKey);
     console.log(`✅ Fetched ${mentions.length} mentions from News API for "${brandName}"`);
     return mentions;
   } catch (error) {
@@ -26,7 +28,7 @@ export async function fetchNewsMentions(brandName, limit = 20) {
 /**
  * Search news articles
  */
-async function searchNews(brandName, limit) {
+async function searchNews(brandName, limit, apiKey) {
   const params = new URLSearchParams({
     q: brandName,
     pageSize: Math.min(limit, 100),
@@ -38,7 +40,7 @@ async function searchNews(brandName, limit) {
 
   const response = await fetch(url, {
     headers: {
-      'X-Api-Key': config.newsApiKey
+      'X-Api-Key': apiKey
     }
   });
 
@@ -92,7 +94,10 @@ async function searchNews(brandName, limit) {
  * Fetch top headlines mentioning the brand
  */
 export async function fetchTopHeadlines(brandName, category = 'business') {
-  if (!config.newsApiKey) {
+  // FIX: Use environment variable directly
+  const apiKey = process.env.NEWS_API_KEY || config.newsApiKey;
+  
+  if (!apiKey) {
     return [];
   }
 
@@ -108,7 +113,7 @@ export async function fetchTopHeadlines(brandName, category = 'business') {
 
     const response = await fetch(url, {
       headers: {
-        'X-Api-Key': config.newsApiKey
+        'X-Api-Key': apiKey
       }
     });
 

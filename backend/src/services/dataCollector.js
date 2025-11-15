@@ -1,9 +1,8 @@
-// server/src/services/dataCollector.js
 import config from '../config/config.js';
 import { mentionStore } from '../models/Mention.js';
 import { fetchRedditMentions } from '../sources/reddit.js';
 import { fetchNewsMentions } from '../sources/newsAPI.js';
-import { detectSpikes } from './spikeDetector.js';
+import { detectSpikes, monitorAllBrands } from './spikeDetector.js';
 
 // Track which brands are being monitored
 const trackedBrands = new Set(['Nike', 'Apple', 'Tesla']); // Default brands
@@ -14,12 +13,41 @@ const collectionIntervals = new Map();
  */
 export function startDataCollection() {
   console.log('🔄 Starting data collection service...');
+  console.log('🔧 Data Collector Config Check:');
+  console.log('   News enabled:', config.sources.news.enabled);
+  console.log('   Reddit enabled:', config.sources.reddit.enabled);
+  
+  // Clear old data on restart to avoid timestamp issues
+  mentionStore.clear();
+  console.log('🧹 Cleared previous mention data');
   
   trackedBrands.forEach(brand => {
     startBrandCollection(brand);
   });
 
   console.log(`📊 Now tracking: ${Array.from(trackedBrands).join(', ')}`);
+  
+  // Start spike monitoring
+  startSpikeMonitoring();
+}
+
+/**
+ * Start spike monitoring interval
+ */
+function startSpikeMonitoring() {
+  // Check for spikes every 5 minutes
+  setInterval(() => {
+    const activeSpikes = monitorAllBrands(Array.from(trackedBrands));
+    
+    if (activeSpikes.length > 0 && global.io) {
+      console.log(`🚨 Monitoring: Found ${activeSpikes.length} active spikes`);
+      global.io.emit('spike-monitor-update', {
+        timestamp: new Date().toISOString(),
+        activeSpikes,
+        totalBrands: trackedBrands.size
+      });
+    }
+  }, config.intervals.spikeCheck || 300000); // 5 minutes default
 }
 
 /**
@@ -64,8 +92,8 @@ async function collectBrandData(brand) {
 
   try {
     const results = await Promise.allSettled([
-      fetchRedditMentions(brand, 15),
-      fetchNewsMentions(brand, 10)
+      config.sources.reddit.enabled ? fetchRedditMentions(brand, 15) : Promise.resolve([]),
+      config.sources.news.enabled ? fetchNewsMentions(brand, 10) : Promise.resolve([])
     ]);
 
     let totalMentions = 0;
@@ -78,14 +106,13 @@ async function collectBrandData(brand) {
 
         // Add to store and track new ones
         mentions.forEach(mention => {
-          // Check if mention already exists (avoid duplicates)
           if (!isDuplicate(mention)) {
             mentionStore.add(mention);
             newMentions.push(mention);
           }
         });
       } else {
-        console.error(`Source ${index} failed:`, result.reason);
+        console.error(`❌ Source ${index} failed for ${brand}:`, result.reason);
       }
     });
 
@@ -96,17 +123,55 @@ async function collectBrandData(brand) {
       newMentions.forEach(mention => {
         global.io.to(brand).emit('new-mention', mention.toJSON());
       });
+      
+      // Also emit batch update
+      global.io.emit('mentions-batch', {
+        brand,
+        count: newMentions.length,
+        mentions: newMentions.map(m => m.toJSON())
+      });
     }
 
-    // Check for spikes
+    // Enhanced spike detection with better logging
+    console.log(`🔍 Checking for spikes for ${brand}...`);
     const spike = detectSpikes(brand);
-    if (spike.detected && global.io) {
-      global.io.to(brand).emit('spike-alert', spike);
-      console.log(`🚨 Spike alert sent for ${brand}`);
+    
+    console.log(`📊 SPIKE ANALYSIS for ${brand}:`, {
+      detected: spike.detected,
+      currentCount: spike.currentCount,
+      previousCount: spike.previousCount,
+      spikeRatio: spike.spikeRatio,
+      increase: spike.increase,
+      minMentions: config.spikeDetection.minMentions,
+      threshold: config.spikeDetection.threshold
+    });
+
+    if (spike.detected) {
+      console.log(`🚨🚨🚨 SPIKE DETECTED for ${brand} 🚨🚨🚨`);
+      console.log(`   Increase: ${spike.increase}%`);
+      console.log(`   Current: ${spike.currentCount} mentions`);
+      console.log(`   Previous: ${spike.previousCount} mentions`);
+      console.log(`   Ratio: ${spike.spikeRatio}x`);
+      console.log(`   Sentiment: ${spike.sentiment?.dominant}`);
+      console.log(`   Sources:`, spike.sources);
+      
+      if (global.io) {
+        console.log(`📡 Emitting spike alert via WebSocket for ${brand}`);
+        
+        // Emit to brand-specific room and general alerts
+        global.io.to(brand).emit('spike-alert', spike);
+        global.io.emit('spike-alert-general', spike);
+        
+        console.log(`✅ Spike alert emitted successfully`);
+      } else {
+        console.log(`❌ No WebSocket connection available to emit spike alert`);
+      }
+    } else {
+      console.log(`✅ No spike detected for ${brand} (ratio: ${spike.spikeRatio}x, needs ${config.spikeDetection.threshold}x)`);
     }
 
   } catch (error) {
-    console.error(`Error collecting data for ${brand}:`, error.message);
+    console.error(`❌ Error collecting data for ${brand}:`, error.message);
   }
 }
 

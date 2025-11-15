@@ -1,4 +1,3 @@
-// server/src/models/Mention.js
 import crypto from 'crypto';
 
 export class Mention {
@@ -12,6 +11,7 @@ export class Mention {
     this.author = data.author || 'Unknown';
     this.sentiment = data.sentiment || 'neutral';
     this.sentimentScore = data.sentimentScore || 0;
+    // FIX: Always use current timestamp for new mentions
     this.timestamp = data.timestamp || new Date().toISOString();
     this.engagement = {
       likes: data.engagement?.likes || 0,
@@ -103,40 +103,81 @@ class MentionStore {
   }
 
   getStats(brand, timeframe = '24h') {
-    const now = Date.now();
-    const timeframeMs = this.parseTimeframe(timeframe);
-    const startTime = now - timeframeMs;
+    try {
+      const now = Date.now();
+      const timeframeMs = this.parseTimeframe(timeframe);
+      const startTime = new Date(now - timeframeMs);
 
-    const relevantMentions = this.mentions.filter(m => 
-      m.brand.toLowerCase() === brand.toLowerCase() &&
-      new Date(m.timestamp) >= new Date(startTime)
-    );
+      console.log(`⏰ Timeframe debug for "${brand}":`, {
+        timeframe,
+        timeframeMs,
+        now: new Date(now).toISOString(),
+        startTime: startTime.toISOString(),
+        totalMentionsInStore: this.mentions.length
+      });
 
-    const sentimentCounts = {
-      positive: 0,
-      neutral: 0,
-      negative: 0
-    };
+      // Case insensitive brand filter with proper date comparison
+      const relevantMentions = this.mentions.filter(m => {
+        const isBrandMatch = m.brand.toLowerCase() === brand.toLowerCase();
+        const mentionDate = new Date(m.timestamp);
+        const isInTimeframe = mentionDate >= startTime;
+        
+        return isBrandMatch && isInTimeframe;
+      });
 
-    const sourceCounts = {};
-    let totalEngagement = 0;
+      console.log(`📊 getStats for "${brand}": ${relevantMentions.length} mentions out of ${this.mentions.filter(m => m.brand.toLowerCase() === brand.toLowerCase()).length} total`);
 
-    relevantMentions.forEach(m => {
-      sentimentCounts[m.sentiment]++;
-      sourceCounts[m.source] = (sourceCounts[m.source] || 0) + 1;
-      totalEngagement += m.engagement.likes + m.engagement.comments + m.engagement.shares;
-    });
+      // Initialize with ALL expected sources
+      const sentimentCounts = { positive: 0, neutral: 0, negative: 0 };
+      const sourceCounts = { reddit: 0, news: 0, twitter: 0 };
+      let totalEngagement = 0;
+      let totalSentimentScore = 0;
 
-    return {
-      total: relevantMentions.length,
-      timeframe,
-      sentiment: sentimentCounts,
-      sources: sourceCounts,
-      avgEngagement: relevantMentions.length > 0 
-        ? Math.round(totalEngagement / relevantMentions.length) 
-        : 0,
-      mentions: relevantMentions
-    };
+      relevantMentions.forEach(m => {
+        // Count sentiment
+        sentimentCounts[m.sentiment] = (sentimentCounts[m.sentiment] || 0) + 1;
+        
+        // Count sources
+        if (m.source in sourceCounts) {
+          sourceCounts[m.source]++;
+        }
+        
+        totalEngagement += m.engagement.likes + m.engagement.comments + m.engagement.shares;
+        totalSentimentScore += m.sentimentScore;
+      });
+
+      const result = {
+        total: relevantMentions.length,
+        timeframe,
+        sentiment: sentimentCounts,
+        sources: sourceCounts,
+        avgEngagement: relevantMentions.length > 0 
+          ? Math.round(totalEngagement / relevantMentions.length) 
+          : 0,
+        avgSentiment: relevantMentions.length > 0 
+          ? parseFloat((totalSentimentScore / relevantMentions.length).toFixed(3)) 
+          : 0
+      };
+
+      console.log(`📈 Final stats for "${brand}":`, {
+        total: result.total,
+        sources: result.sources,
+        sentiment: result.sentiment
+      });
+
+      return result;
+
+    } catch (error) {
+      console.error('❌ Error in getStats:', error);
+      return {
+        total: 0,
+        timeframe,
+        sentiment: { positive: 0, neutral: 0, negative: 0 },
+        sources: { reddit: 0, news: 0, twitter: 0 },
+        avgEngagement: 0,
+        avgSentiment: 0
+      };
+    }
   }
 
   parseTimeframe(timeframe) {
