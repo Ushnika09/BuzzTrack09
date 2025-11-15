@@ -1,3 +1,4 @@
+// client/src/services/api.js
 import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -41,8 +42,6 @@ export const spikesAPI = {
   getCurrent: (brand) => api.get('/spikes', { params: { brand } }),
   getHistory: (brand, days = 7) => 
     api.get('/spikes/history', { params: { brand, days } }),
-  getActive: () => api.get('/spikes/active'),
-  getOverview: () => api.get('/spikes/overview'),
 };
 
 // Brands API
@@ -58,33 +57,22 @@ export const overviewAPI = {
   getAll: () => api.get('/overview'),
 };
 
-// Topics API - Updated to match backend routes
+// Topics API
 export const topicsAPI = {
-  // Get trending topics across all brands
-  getTrending: (timeframe = '24h', limit = 10) =>
-    api.get('/topics/trending', { params: { timeframe, limit } }),
+  getTopics: (brand, timeframe = '24h', limit = 20) => 
+    api.get('/topics', { params: { brand, timeframe, limit } }),
   
-  // Get topics for a specific brand
-  getBrandTopics: (brand, timeframe = '24h', limit = 15) =>
-    api.get(`/topics/brand/${brand}`, { params: { timeframe, limit } }),
+  getTrending: (brand, limit = 10) =>
+    api.get('/topics/trending', { params: { brand, limit } }),
   
-  // Get clustered mentions by topic
-  getClusters: (brand, timeframe = '24h') =>
-    api.get('/topics/clusters', { params: { brand, timeframe } }),
+  getClusters: (brand, timeframe = '24h', limit = 10) =>
+    api.get('/topics/clusters', { params: { brand, timeframe, limit } }),
   
-  // Get topic timeline for a brand
-  getTimeline: (brand, days = 7) =>
-    api.get('/topics/timeline', { params: { brand, days } }),
+  getTimeline: (brand, keyword, hours = 24) =>
+    api.get(`/topics/timeline/${keyword}`, { params: { brand, hours } }),
   
-  // Compare topics across multiple brands
-  getComparison: (brands, timeframe = '24h') =>
-    api.get('/topics/comparison', { params: { brands: brands?.join(','), timeframe } }),
-};
-
-// Debug API (remove in production)
-export const debugAPI = {
-  getSources: (brand, timeframe) => 
-    api.get(`/debug/sources/${brand}`, { params: { timeframe } }),
+  getComparison: (timeframe = '24h') =>
+    api.get('/topics/compare', { params: { timeframe } }),
 };
 
 export default api;
