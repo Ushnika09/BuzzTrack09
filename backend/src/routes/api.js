@@ -13,14 +13,13 @@ import {
   clusterByTopic, 
   getTrendingTopics,
   getTopicTimeline,
-  compareTopicsAcrossBrands 
+  compareTopicsAcrossBrands,
+  getTopicThemes,
+  detectEmergingTopics 
 } from '../services/topicAnalyzer.js';
-
-
 
 /**
  * Parse timeframe string to milliseconds
- * Supports: 1h, 6h, 12h, 24h, 7d, 30d, 4w, etc.
  */
 function parseTimeframe(timeframe) {
   const units = {
@@ -159,7 +158,6 @@ router.get('/stats', (req, res) => {
     const ensuredSources = {
       reddit: stats.sources?.reddit || 0,
       news: stats.sources?.news || 0,
-      // twitter: stats.sources?.twitter || 0
     };
 
     const response = {
@@ -183,7 +181,6 @@ router.get('/stats', (req, res) => {
     });
   }
 });
-
 
 /**
  * GET /api/spikes
@@ -363,7 +360,6 @@ router.get('/overview', (req, res) => {
   }
 });
 
-
 /**
  * GET /api/stats/overview
  * Get comprehensive platform-wide statistics
@@ -464,7 +460,6 @@ router.get('/stats/overview', (req, res) => {
   }
 });
 
-
 /**
  * GET /api/stats/sources-comparison
  * Compare performance across different data sources
@@ -487,7 +482,7 @@ router.get('/stats/sources-comparison', (req, res) => {
         const mentions = mentionStore.getAll({
           brand,
           source,
-          startDate: getTimeframeDate(timeframe) // Use the global helper function
+          startDate: getTimeframeDate(timeframe)
         });
         
         let totalSentiment = 0;
@@ -698,27 +693,44 @@ router.get('/topics/comparison', (req, res) => {
   }
 });
 
-
 /**
- * GET /api/debug/twitter/:brand
- * Test Twitter API integration
+ * GET /api/topics/themes
+ * Get grouped topic themes (categories)
  */
-router.get('/debug/twitter/:brand', async (req, res) => {
+router.get('/topics/themes', (req, res) => {
   try {
-    const { brand } = req.params;
-    const { limit = 5 } = req.query;
-    
-    console.log(`🧪 Testing Twitter API for: ${brand}`);
-    const mentions = await fetchTwitterMentions(brand, parseInt(limit));
-    
+    const { brand, timeframe = '24h' } = req.query;
+
+    if (!brand) {
+      return res.status(400).json({
+        success: false,
+        error: 'Brand parameter is required'
+      });
+    }
+
+    const mentions = mentionStore.getAll({
+      brand,
+      startDate: getTimeframeDate(timeframe)
+    });
+
+    if (mentions.length === 0) {
+      return res.json({
+        success: true,
+        brand,
+        themes: [],
+        message: 'No mentions available'
+      });
+    }
+
+    const themes = getTopicThemes(mentions);
+
     res.json({
       success: true,
       brand,
-      mentions: mentions.map(m => m.toJSON()),
-      count: mentions.length,
-      source: 'twitter'
+      timeframe,
+      themes
     });
-    
+
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -727,6 +739,47 @@ router.get('/debug/twitter/:brand', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/topics/emerging
+ * Detect emerging topics (new and rapidly growing)
+ */
+router.get('/topics/emerging', (req, res) => {
+  try {
+    const { brand, limit = 5 } = req.query;
+
+    if (!brand) {
+      return res.status(400).json({
+        success: false,
+        error: 'Brand parameter is required'
+      });
+    }
+
+    const mentions = mentionStore.getAll({ brand });
+
+    if (mentions.length === 0) {
+      return res.json({
+        success: true,
+        brand,
+        emerging: [],
+        message: 'No mentions available'
+      });
+    }
+
+    const emerging = detectEmergingTopics(mentions, parseInt(limit));
+
+    res.json({
+      success: true,
+      brand,
+      emerging
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
 
 /**
  * DEBUG: Get raw data collection status
@@ -746,7 +799,6 @@ router.get('/debug/collection-status', (req, res) => {
     const sources = {
       reddit: allMentions.filter(m => m.source === 'reddit'),
       news: allMentions.filter(m => m.source === 'news'),
-      twitter: allMentions.filter(m => m.source === 'twitter')
     };
 
     res.json({
@@ -756,7 +808,6 @@ router.get('/debug/collection-status', (req, res) => {
       sources: {
         reddit: sources.reddit.length,
         news: sources.news.length,
-        twitter: sources.twitter.length
       },
       recentMentions: allMentions.slice(0, 5).map(m => ({
         id: m.id,
@@ -774,9 +825,6 @@ router.get('/debug/collection-status', (req, res) => {
     });
   }
 });
-
-
-//test
 
 /**
  * DEBUG: Test News API directly

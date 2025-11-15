@@ -1,5 +1,5 @@
-import { createContext, useContext, useEffect, useState } from 'react';
-import io from 'socket.io-client';
+import { createContext, useContext, useEffect, useState } from "react";
+import io from "socket.io-client";
 
 const SocketContext = createContext();
 
@@ -8,41 +8,49 @@ export function SocketProvider({ children }) {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    const socketUrl = import.meta.env.VITE_WS_URL || 'http://localhost:5000';
-    console.log('🔌 Connecting to WebSocket:', socketUrl);
-    
+    const socketUrl =
+      import.meta.env.VITE_WS_URL ||
+      (window.location.hostname === "localhost"
+        ? "http://localhost:5000"
+        : "https://buzztrack09-backend.onrender.com");
+
+    console.log("🔌 Connecting to WebSocket:", socketUrl);
+    console.log(import.meta.env.VITE_API_URL,"env");
+    console.log(import.meta.env.VITE_WS_URL);
+
+
     const newSocket = io(socketUrl, {
-      transports: ['websocket', 'polling']
+      transports: ["websocket", "polling"],
     });
 
-    newSocket.on('connect', () => {
-      console.log('✅ WebSocket connected successfully');
+    newSocket.on("connect", () => {
+      console.log("✅ WebSocket connected successfully");
       setIsConnected(true);
     });
 
-    newSocket.on('disconnect', () => {
-      console.log('❌ WebSocket disconnected');
+    newSocket.on("disconnect", () => {
+      console.log("❌ WebSocket disconnected");
       setIsConnected(false);
     });
 
-    newSocket.on('connect_error', (error) => {
-      console.error('❌ WebSocket connection error:', error);
+    newSocket.on("connect_error", (error) => {
+      console.error("❌ WebSocket connection error:", error);
     });
 
     // Listen for spike alerts globally
-    newSocket.on('spike-alert-general', (spike) => {
-      console.log('📡 RECEIVED SPIKE ALERT (general):', spike);
+    newSocket.on("spike-alert-general", (spike) => {
+      console.log("📡 RECEIVED SPIKE ALERT (general):", spike);
     });
 
     // Listen for any spike alerts
-    newSocket.on('spike-alert', (spike) => {
-      console.log('📡 RECEIVED SPIKE ALERT (specific):', spike);
+    newSocket.on("spike-alert", (spike) => {
+      console.log("📡 RECEIVED SPIKE ALERT (specific):", spike);
     });
 
     setSocket(newSocket);
 
     return () => {
-      console.log('🔌 Cleaning up WebSocket connection');
+      console.log("🔌 Cleaning up WebSocket connection");
       newSocket.disconnect();
     };
   }, []);
@@ -57,7 +65,7 @@ export function SocketProvider({ children }) {
 export function useSocket() {
   const context = useContext(SocketContext);
   if (!context) {
-    throw new Error('useSocket must be used within SocketProvider');
+    throw new Error("useSocket must be used within SocketProvider");
   }
   return context;
 }
