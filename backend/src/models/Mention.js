@@ -1,28 +1,32 @@
+// server/src/models/Mention.js
 import crypto from 'crypto';
 
 export class Mention {
   constructor(data) {
     this.id = data.id || this.generateId();
-    this.brand = data.brand;
+    this.brand = data.brand?.trim();
     this.source = data.source; // 'reddit', 'news', 'twitter'
-    this.platform = data.platform; // Specific platform/subreddit
-    this.content = data.content;
-    this.url = data.url;
+    this.platform = data.platform || 'unknown';
+    this.content = (data.content || '').trim();
+    this.url = data.url || null;
     this.author = data.author || 'Unknown';
     this.sentiment = data.sentiment || 'neutral';
     this.sentimentScore = data.sentimentScore || 0;
-    // FIX: Always use current timestamp for new mentions
     this.timestamp = data.timestamp || new Date().toISOString();
     this.engagement = {
-      likes: data.engagement?.likes || 0,
-      comments: data.engagement?.comments || 0,
-      shares: data.engagement?.shares || 0
+      likes: Number(data.engagement?.likes || 0),
+      comments: Number(data.engagement?.comments || 0),
+      shares: Number(data.engagement?.shares || 0)
     };
     this.metadata = data.metadata || {};
   }
 
   generateId() {
-    return crypto.randomBytes(16).toString('hex');
+    // Use URL if available (especially for news) → prevents duplicates
+    if (this.url) {
+      return `news_${crypto.createHash('md5').update(this.url).digest('hex').slice(0, 12)}`;
+    }
+    return crypto.randomBytes(12).toString('hex');
   }
 
   toJSON() {
@@ -43,21 +47,29 @@ export class Mention {
   }
 }
 
-// In-memory storage (replace with database later)
 class MentionStore {
   constructor() {
     this.mentions = [];
-    this.maxSize = 10000; // Keep last 10k mentions
+    this.maxSize = 15000;
   }
 
   add(mention) {
+    // Prevent duplicates by URL (critical for news)
+    if (mention.url) {
+      const exists = this.mentions.some(m => m.url === mention.url);
+      if (exists) {
+        console.log(`Duplicate blocked by URL: ${mention.url}`);
+        return null; // silently skip
+      }
+    }
+
     this.mentions.push(mention);
-    
-    // Keep only recent mentions
+
+    // Keep size manageable
     if (this.mentions.length > this.maxSize) {
       this.mentions = this.mentions.slice(-this.maxSize);
     }
-    
+
     return mention;
   }
 
@@ -65,35 +77,32 @@ class MentionStore {
     let filtered = [...this.mentions];
 
     if (filters.brand) {
-      filtered = filtered.filter(m => 
-        m.brand.toLowerCase().includes(filters.brand.toLowerCase())
+      const brandLower = filters.brand.toLowerCase().trim();
+      filtered = filtered.filter(m =>
+        m.brand && m.brand.toLowerCase() === brandLower
       );
-    }
-
-    if (filters.sentiment) {
-      filtered = filtered.filter(m => m.sentiment === filters.sentiment);
     }
 
     if (filters.source) {
       filtered = filtered.filter(m => m.source === filters.source);
     }
 
+    if (filters.sentiment) {
+      filtered = filtered.filter(m => m.sentiment === filters.sentiment);
+    }
+
     if (filters.startDate) {
-      filtered = filtered.filter(m => 
-        new Date(m.timestamp) >= new Date(filters.startDate)
-      );
+      const start = new Date(filters.startDate);
+      filtered = filtered.filter(m => new Date(m.timestamp) >= start);
     }
 
     if (filters.endDate) {
-      filtered = filtered.filter(m => 
-        new Date(m.timestamp) <= new Date(filters.endDate)
-      );
+      const end = new Date(filters.endDate);
+      filtered = filtered.filter(m => new Date(m.timestamp) <= end);
     }
 
-    // Sort by timestamp (newest first)
-    filtered.sort((a, b) => 
-      new Date(b.timestamp) - new Date(a.timestamp)
-    );
+    // Sort newest first
+    filtered.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
     return filtered;
   }
@@ -102,100 +111,67 @@ class MentionStore {
     return this.mentions.find(m => m.id === id);
   }
 
-  getStats(brand, timeframe = '24h') {
-    try {
-      const now = Date.now();
-      const timeframeMs = this.parseTimeframe(timeframe);
-      const startTime = new Date(now - timeframeMs);
+  getStats(brand, timeframe = '7d') {
+    const timeframeMs = this.parseTimeframe(timeframe);
+    const cutoff = Date.now() - timeframeMs;
 
-      console.log(`⏰ Timeframe debug for "${brand}":`, {
-        timeframe,
-        timeframeMs,
-        now: new Date(now).toISOString(),
-        startTime: startTime.toISOString(),
-        totalMentionsInStore: this.mentions.length
-      });
+    const brandLower = brand.toLowerCase();
 
-      // Case insensitive brand filter with proper date comparison
-      const relevantMentions = this.mentions.filter(m => {
-        const isBrandMatch = m.brand.toLowerCase() === brand.toLowerCase();
-        const mentionDate = new Date(m.timestamp);
-        const isInTimeframe = mentionDate >= startTime;
-        
-        return isBrandMatch && isInTimeframe;
-      });
+    const relevantMentions = this.mentions.filter(m => {
+      return m.brand && 
+             m.brand.toLowerCase() === brandLower && 
+             new Date(m.timestamp).getTime() >= cutoff;
+    });
 
-      console.log(`📊 getStats for "${brand}": ${relevantMentions.length} mentions out of ${this.mentions.filter(m => m.brand.toLowerCase() === brand.toLowerCase()).length} total`);
+    const sentimentCounts = { positive: 0, neutral: 0, negative: 0 };
+    const sourceCounts = { reddit: 0, news: 0, twitter: 0 };
+    let totalEngagement = 0;
 
-      // Initialize with ALL expected sources
-      const sentimentCounts = { positive: 0, neutral: 0, negative: 0 };
-      const sourceCounts = { reddit: 0, news: 0, twitter: 0 };
-      let totalEngagement = 0;
-      let totalSentimentScore = 0;
+    relevantMentions.forEach(m => {
+      sentimentCounts[m.sentiment]++;
+      sourceCounts[m.source] = (sourceCounts[m.source] || 0) + 1;
+      totalEngagement += m.engagement.likes + m.engagement.comments + m.engagement.shares;
+    });
 
-      relevantMentions.forEach(m => {
-        // Count sentiment
-        sentimentCounts[m.sentiment] = (sentimentCounts[m.sentiment] || 0) + 1;
-        
-        // Count sources
-        if (m.source in sourceCounts) {
-          sourceCounts[m.source]++;
-        }
-        
-        totalEngagement += m.engagement.likes + m.engagement.comments + m.engagement.shares;
-        totalSentimentScore += m.sentimentScore;
-      });
+    const total = relevantMentions.length;
 
-      const result = {
-        total: relevantMentions.length,
-        timeframe,
-        sentiment: sentimentCounts,
-        sources: sourceCounts,
-        avgEngagement: relevantMentions.length > 0 
-          ? Math.round(totalEngagement / relevantMentions.length) 
-          : 0,
-        avgSentiment: relevantMentions.length > 0 
-          ? parseFloat((totalSentimentScore / relevantMentions.length).toFixed(3)) 
-          : 0
-      };
-
-      console.log(`📈 Final stats for "${brand}":`, {
-        total: result.total,
-        sources: result.sources,
-        sentiment: result.sentiment
-      });
-
-      return result;
-
-    } catch (error) {
-      console.error('❌ Error in getStats:', error);
-      return {
-        total: 0,
-        timeframe,
-        sentiment: { positive: 0, neutral: 0, negative: 0 },
-        sources: { reddit: 0, news: 0, twitter: 0 },
-        avgEngagement: 0,
-        avgSentiment: 0
-      };
-    }
+    return {
+      total,
+      timeframe,
+      sentiment: sentimentCounts,
+      sources: sourceCounts,
+      avgEngagement: total > 0 ? Math.round(totalEngagement / total) : 0,
+      avgSentiment: total > 0 
+        ? parseFloat((relevantMentions.reduce((sum, m) => sum + m.sentimentScore, 0) / total).toFixed(3))
+        : 0
+    };
   }
 
   parseTimeframe(timeframe) {
-    const units = {
-      'h': 3600000,
-      'd': 86400000,
-      'w': 604800000
-    };
-    
     const match = timeframe.match(/^(\d+)([hdw])$/);
-    if (!match) return 86400000; // default 24h
-    
-    const [, value, unit] = match;
-    return parseInt(value) * units[unit];
+    if (!match) return 24 * 60 * 60 * 1000; // 24h
+
+    const value = parseInt(match[1]);
+    const unit = match[2];
+
+    return value * (
+      unit === 'h' ? 3600000 :
+      unit === 'd' ? 86400000 :
+      604800000 // week
+    );
   }
 
   clear() {
     this.mentions = [];
+    console.log('Mention store cleared');
+  }
+
+  // Debug helper
+  debugBrand(brand) {
+    const lower = brand.toLowerCase();
+    const matches = this.mentions.filter(m => m.brand?.toLowerCase() === lower);
+    console.log(`Debug: Found ${matches.length} mentions for "${brand}" (stored as: ${[...new Set(matches.map(m => m.brand))].join(', ')})`);
+    return matches;
   }
 }
 

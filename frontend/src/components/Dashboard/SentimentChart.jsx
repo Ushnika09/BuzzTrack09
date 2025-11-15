@@ -11,7 +11,7 @@ const COLORS = {
   neutral: '#6b7280'
 };
 
-export default function SentimentChart({ brand, timeframe = '24h' }) {
+export default function SentimentChart({ brand, timeframe = '7d' }) {
   const { data, isLoading } = useBrandStats(brand, timeframe);
 
   // Memoize chart data to prevent unnecessary re-renders

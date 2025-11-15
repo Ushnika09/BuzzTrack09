@@ -8,9 +8,9 @@ import EmptyState from '../UI/EmptyState';
 export default function TrendingTopics({ brand, limit = 8 }) {
   const { data, isLoading } = useQuery({
     queryKey: ['trending-topics', brand, limit],
-    queryFn: () => topicsAPI.getTrending(brand, limit).then(res => res.data),
+    queryFn: () => topicsAPI.getBrandTopics(brand, '24h', limit).then(res => res.data),
     enabled: !!brand,
-    refetchInterval: 30000, // Refresh every 30s for trending
+    refetchInterval: 30000,
   });
 
   if (isLoading) return <ChartSkeleton />;

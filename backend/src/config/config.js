@@ -1,4 +1,3 @@
-// server/src/config/config.js
 export default {
   port: process.env.PORT || 5000,
   
@@ -9,14 +8,15 @@ export default {
   intervals: {
     reddit: 60000,      // 1 minute
     news: 120000,       // 2 minutes
-    twitter: 90000      // 1.5 minutes (if enabled)
+    twitter: 90000,     // 1.5 minutes
+    spikeCheck: 300000  // 5 minutes for spike monitoring
   },
   
   // Spike detection thresholds
   spikeDetection: {
     timeWindow: 3600000,  // 1 hour in ms
-    threshold: 2.5,        // 2.5x normal volume
-    minMentions: 5         // Minimum mentions to consider
+    threshold: 2.5,       // 2.5x normal volume
+    minMentions: 5        // Minimum mentions to consider
   },
   
   // Data sources configuration
@@ -24,16 +24,21 @@ export default {
     reddit: {
       enabled: true,
       baseUrl: 'https://www.reddit.com',
-      subreddits: ['all', 'technology', 'business', 'news']
+      subreddits: ['all', 'technology', 'business', 'news'],
+      requestsPerMinute: 60
     },
     news: {
       enabled: true,
       baseUrl: 'https://newsapi.org/v2',
-      pageSize: 20
+      pageSize: 20,
+      requestsPerDay: 1000
     },
     twitter: {
-      enabled: false, // Requires API keys
-      baseUrl: 'https://api.twitter.com/2'
+      enabled: true, //  ENABLED - you have the credentials!
+      baseUrl: 'https://api.twitter.com/2',
+      bearerToken: process.env.X_BEARER_TOKEN,
+      requestsPer15Min: 100, // Free tier limit
+      tweetsPerMonth: 500000
     }
   },
   

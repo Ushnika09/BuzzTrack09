@@ -9,8 +9,8 @@ import { startDataCollection } from './services/dataCollector.js';
 
 dotenv.config();
 
-console.log('   PORT:', process.env.PORT);
-console.log('   NEWS_API_KEY:', process.env.NEWS_API_KEY ? `Set (${process.env.NEWS_API_KEY.substring(0, 8)}...)` : 'MISSING');
+// console.log('   PORT:', process.env.PORT);
+// console.log('   NEWS_API_KEY:', process.env.NEWS_API_KEY ? `Set (${process.env.NEWS_API_KEY.substring(0, 8)}...)` : 'MISSING');
 
 const app = express();
 const server = http.createServer(app);
@@ -82,7 +82,7 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
-  console.log(`🚀 BuzzTrack server running on port ${PORT}`);
+  // console.log(`🚀 BuzzTrack server running on port ${PORT}`);
   console.log(`📊 Dashboard: http://localhost:${PORT}`);
   
   // Start data collection after server starts

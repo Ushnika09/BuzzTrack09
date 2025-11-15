@@ -2,7 +2,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { statsAPI } from '../services/api';
 
-export function useBrandStats(brand, timeframe = '24h') {
+export function useBrandStats(brand, timeframe = '7d') {
   return useQuery({
     queryKey: ['stats', brand, timeframe],
     queryFn: async () => {

@@ -23,7 +23,7 @@ const sourceLabels = {
 // Always show all sources, even if count is 0
 const ALL_SOURCES = ['reddit', 'news', 'twitter'];
 
-export default function SourceBreakdown({ brand, timeframe = '24h' }) {
+export default function SourceBreakdown({ brand, timeframe = '7d' }) {
   const { data, isLoading } = useBrandStats(brand, timeframe);
 
   if (isLoading) return <ChartSkeleton />;

@@ -8,7 +8,6 @@ import {
   getTrackedBrands,
   triggerCollection 
 } from '../services/dataCollector.js';
-// Add these topic analysis imports
 import { 
   extractTopics, 
   clusterByTopic, 
@@ -18,7 +17,6 @@ import {
 } from '../services/topicAnalyzer.js';
 
 
-// Add this right after the imports, before the routes
 
 /**
  * Parse timeframe string to milliseconds
@@ -139,7 +137,7 @@ router.get('/mentions/:id', (req, res) => {
  */
 router.get('/stats', (req, res) => {
   try {
-    const { brand, timeframe = '24h' } = req.query;
+    const { brand, timeframe = '7d' } = req.query;
 
     if (!brand) {
       return res.status(400).json({
@@ -161,7 +159,7 @@ router.get('/stats', (req, res) => {
     const ensuredSources = {
       reddit: stats.sources?.reddit || 0,
       news: stats.sources?.news || 0,
-      twitter: stats.sources?.twitter || 0
+      // twitter: stats.sources?.twitter || 0
     };
 
     const response = {
@@ -185,6 +183,7 @@ router.get('/stats', (req, res) => {
     });
   }
 });
+
 
 /**
  * GET /api/spikes
@@ -700,5 +699,127 @@ router.get('/topics/comparison', (req, res) => {
 });
 
 
+/**
+ * GET /api/debug/twitter/:brand
+ * Test Twitter API integration
+ */
+router.get('/debug/twitter/:brand', async (req, res) => {
+  try {
+    const { brand } = req.params;
+    const { limit = 5 } = req.query;
+    
+    console.log(`🧪 Testing Twitter API for: ${brand}`);
+    const mentions = await fetchTwitterMentions(brand, parseInt(limit));
+    
+    res.json({
+      success: true,
+      brand,
+      mentions: mentions.map(m => m.toJSON()),
+      count: mentions.length,
+      source: 'twitter'
+    });
+    
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+
+/**
+ * DEBUG: Get raw data collection status
+ */
+router.get('/debug/collection-status', (req, res) => {
+  try {
+    const { brand } = req.query;
+    
+    if (!brand) {
+      return res.status(400).json({
+        success: false,
+        error: 'Brand parameter required'
+      });
+    }
+
+    const allMentions = mentionStore.getAll({ brand });
+    const sources = {
+      reddit: allMentions.filter(m => m.source === 'reddit'),
+      news: allMentions.filter(m => m.source === 'news'),
+      twitter: allMentions.filter(m => m.source === 'twitter')
+    };
+
+    res.json({
+      success: true,
+      brand,
+      totalMentions: allMentions.length,
+      sources: {
+        reddit: sources.reddit.length,
+        news: sources.news.length,
+        twitter: sources.twitter.length
+      },
+      recentMentions: allMentions.slice(0, 5).map(m => ({
+        id: m.id,
+        source: m.source,
+        content: m.content.substring(0, 100),
+        timestamp: m.timestamp,
+        sentiment: m.sentiment
+      }))
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+
+//test
+
+/**
+ * DEBUG: Test News API directly
+ */
+router.get('/debug/news-test', async (req, res) => {
+  try {
+    const { brand = 'Nike' } = req.query;
+    const apiKey = process.env.NEWS_API_KEY;
+    
+    if (!apiKey) {
+      return res.json({
+        success: false,
+        error: 'No NEWS_API_KEY in environment'
+      });
+    }
+
+    const testUrl = `https://newsapi.org/v2/everything?q=${brand}&pageSize=5&sortBy=publishedAt&language=en`;
+    
+    const response = await fetch(testUrl, {
+      headers: { 'X-Api-Key': apiKey }
+    });
+
+    const data = await response.json();
+
+    res.json({
+      success: true,
+      apiStatus: response.status,
+      totalResults: data.totalResults,
+      articles: data.articles ? data.articles.map(a => ({
+        title: a.title,
+        source: a.source.name,
+        publishedAt: a.publishedAt,
+        url: a.url
+      })) : [],
+      rawResponse: data
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
 
 export default router;

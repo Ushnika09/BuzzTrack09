@@ -5,58 +5,60 @@ import { mentionStore } from '../models/Mention.js';
 /**
  * Detect conversation spikes for a brand
  */
-export function detectSpikes(brand) {
-  const timeWindow = config.spikeDetection.timeWindow;
+// Helper to parse timeframe (same as in api.js)
+function parseTimeframe(timeframe) {
+  const units = { 'h': 3600000, 'd': 86400000, 'w': 604800000 };
+  const match = timeframe.match(/^(\d+)([hdw])$/);
+  if (!match) return 86400000;
+  return parseInt(match[1]) * units[match[2]];
+}
+
+/**
+ * Detect conversation spikes for a brand — NOW USING 7d WINDOW
+ */
+export function detectSpikes(brand, timeframe = '7d') {  // ← Accept timeframe
+  const timeWindow = parseTimeframe(timeframe); // ← Use dynamic window
   const threshold = config.spikeDetection.threshold;
   const minMentions = config.spikeDetection.minMentions;
 
   const now = Date.now();
-  const recentWindow = now - timeWindow;
-  const previousWindow = recentWindow - timeWindow;
+  const recentWindowStart = now - timeWindow;
+  const previousWindowStart = recentWindowStart - timeWindow;
 
-  // Get mentions in current window
+  // Current window: last 7 days
   const recentMentions = mentionStore.getAll({
     brand,
-    startDate: new Date(recentWindow).toISOString()
+    startDate: new Date(recentWindowStart).toISOString()
   });
 
-  // Get mentions in previous window (for comparison)
+  // Previous window: 7–14 days ago
   const previousMentions = mentionStore.getAll({
     brand,
-    startDate: new Date(previousWindow).toISOString(),
-    endDate: new Date(recentWindow).toISOString()
+    startDate: new Date(previousWindowStart).toISOString(),
+    endDate: new Date(recentWindowStart).toISOString()
   });
 
   const recentCount = recentMentions.length;
-  const previousCount = previousMentions.length || 1; // Avoid division by zero
+  const previousCount = Math.max(previousMentions.length, 1); // Avoid divide by zero
 
-  // Calculate spike ratio
   const spikeRatio = recentCount / previousCount;
-
   const isSpike = recentCount >= minMentions && spikeRatio >= threshold;
 
-  if (isSpike) {
-    return {
-      detected: true,
-      brand,
-      currentCount: recentCount,
-      previousCount,
-      spikeRatio: spikeRatio.toFixed(2),
-      increase: ((spikeRatio - 1) * 100).toFixed(1),
-      timestamp: new Date().toISOString(),
-      sentiment: calculateSpikeSentiment(recentMentions),
-      topMentions: getTopMentions(recentMentions, 5),
-      sources: getSourceBreakdown(recentMentions)
-    };
-  }
-
-  return {
-    detected: false,
+  const result = {
+    detected: isSpike,
     brand,
     currentCount: recentCount,
     previousCount,
-    spikeRatio: spikeRatio.toFixed(2)
+    spikeRatio: Number(spikeRatio.toFixed(2)),
+    increase: Number(((spikeRatio - 1) * 100).toFixed(1)),
+    timeframe,
+    timestamp: new Date().toISOString(),
+    sources: getSourceBreakdown(recentMentions),
+    sentiment: isSpike ? calculateSpikeSentiment(recentMentions) : null,
+    topMentions: isSpike ? getTopMentions(recentMentions, 5) : []
   };
+
+  return result;
 }
 
 /**
