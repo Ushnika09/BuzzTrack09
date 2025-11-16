@@ -33,7 +33,6 @@ export default function App() {
                 <Routes>
                   <Route path="/" element={<DashboardLayout />}>
                     <Route index element={<Home />} />
-                    <Route path="brand/:brandName" element={<BrandDetail />} />
                     <Route path="analytics" element={<Analytics />} />
                     <Route path="topics" element={<Topics />} />
                   </Route>

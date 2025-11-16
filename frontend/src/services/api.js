@@ -41,8 +41,6 @@ export const spikesAPI = {
   getCurrent: (brand) => api.get('/spikes', { params: { brand } }),
   getHistory: (brand, days = 7) => 
     api.get('/spikes/history', { params: { brand, days } }),
-  getActive: () => api.get('/spikes/active'),
-  getOverview: () => api.get('/spikes/overview'),
 };
 
 // Brands API
@@ -58,33 +56,48 @@ export const overviewAPI = {
   getAll: () => api.get('/overview'),
 };
 
-// Topics API - Updated to match backend routes
+// Topics API - FIXED to match backend routes exactly
 export const topicsAPI = {
-  // Get trending topics across all brands
+  // Get trending topics across all brands (backend: /topics/trending)
   getTrending: (timeframe = '24h', limit = 10) =>
     api.get('/topics/trending', { params: { timeframe, limit } }),
   
-  // Get topics for a specific brand
+  // Get topics for a specific brand (backend: /topics/brand/:brand)
   getBrandTopics: (brand, timeframe = '24h', limit = 15) =>
     api.get(`/topics/brand/${brand}`, { params: { timeframe, limit } }),
   
-  // Get clustered mentions by topic
+  // Get clustered mentions by topic (backend: /topics/clusters)
   getClusters: (brand, timeframe = '24h') =>
     api.get('/topics/clusters', { params: { brand, timeframe } }),
   
-  // Get topic timeline for a brand
+  // Get topic timeline for a brand (backend: /topics/timeline)
   getTimeline: (brand, days = 7) =>
     api.get('/topics/timeline', { params: { brand, days } }),
   
-  // Compare topics across multiple brands
+  // Compare topics across multiple brands (backend: /topics/comparison)
   getComparison: (brands, timeframe = '24h') =>
-    api.get('/topics/comparison', { params: { brands: brands?.join(','), timeframe } }),
+    api.get('/topics/comparison', { 
+      params: { 
+        brands: Array.isArray(brands) ? brands.join(',') : brands, 
+        timeframe 
+      } 
+    }),
+  
+  // Get topic themes (backend: /topics/themes)
+  getThemes: (brand, timeframe = '24h') =>
+    api.get('/topics/themes', { params: { brand, timeframe } }),
+  
+  // Get emerging topics (backend: /topics/emerging)
+  getEmerging: (brand, limit = 5) =>
+    api.get('/topics/emerging', { params: { brand, limit } }),
 };
 
-// Debug API (remove in production)
+// Debug API
 export const debugAPI = {
-  getSources: (brand, timeframe) => 
-    api.get(`/debug/sources/${brand}`, { params: { timeframe } }),
+  getCollectionStatus: (brand) => 
+    api.get('/debug/collection-status', { params: { brand } }),
+  testNews: (brand) =>
+    api.get('/debug/news-test', { params: { brand } }),
 };
 
 export default api;

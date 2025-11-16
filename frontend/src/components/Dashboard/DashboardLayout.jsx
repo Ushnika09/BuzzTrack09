@@ -12,6 +12,8 @@ import {
   Sparkles,
   Zap,
   Crown,
+  Activity,
+  Target,
 } from "lucide-react";
 import ThemeToggle from "../UI/ThemeToggle";
 import OnboardingTour from "../OnboardingTour";
@@ -72,7 +74,7 @@ export default function DashboardLayout() {
         `}
       >
         <div className="flex flex-col h-full">
-          {/* Premium Sidebar Header */}
+          {/* ENHANCED Premium Sidebar Header with Logo */}
           <div
             className={`relative p-6 border-b ${
               theme === "dark" 
@@ -103,11 +105,59 @@ export default function DashboardLayout() {
               )}
             </button>
 
-            {/* Premium Logo Area - Empty but maintains spacing */}
-            <div className={`transition-all duration-500 ${sidebarCollapsed ? "opacity-0 scale-95" : "opacity-100 scale-100"}`}>
-              <div className="h-8 flex items-center justify-center">
-                <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg opacity-20" />
-              </div>
+            {/* ENHANCED Logo Area */}
+            <div className={`
+              transition-all duration-500
+              ${sidebarCollapsed ? "scale-90 opacity-80" : "scale-100 opacity-100"}
+            `}>
+              {sidebarCollapsed ? (
+                // Collapsed Logo - Icon Only
+                <div className="flex justify-center">
+                  <div className={`
+                    relative w-12 h-12 rounded-2xl flex items-center justify-center
+                    bg-gradient-to-br from-blue-500 via-purple-600 to-blue-600
+                    shadow-2xl shadow-blue-500/30
+                    transition-all duration-500 hover:scale-110 hover:rotate-12
+                  `}>
+                    <Activity className="w-6 h-6 text-white" />
+                    <div className="absolute -top-1 -right-1">
+                      <Zap className="w-3 h-3 text-yellow-400 animate-pulse" />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                // Expanded Logo - Full Branding
+                <div className="flex items-center gap-3 group cursor-pointer">
+                  <div className={`
+                    relative w-12 h-12 rounded-2xl flex items-center justify-center
+                    bg-gradient-to-br from-blue-500 via-purple-600 to-blue-600
+                    shadow-2xl shadow-blue-500/25
+                    transition-all duration-500 group-hover:scale-110 group-hover:rotate-12
+                  `}>
+                    <Activity className="w-6 h-6 text-white" />
+                    <div className="absolute -top-1 -right-1">
+                      <Zap className="w-3 h-3 text-yellow-400 animate-pulse" />
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <h1 className={`
+                      text-2xl font-black bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent
+                      transition-all duration-500
+                    `}>
+                      BuzzTrack
+                    </h1>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className={`
+                        text-xs font-bold tracking-wide uppercase
+                        ${theme === "dark" ? "text-slate-400" : "text-slate-500"}
+                      `}>
+                        Premium Analytics
+                      </p>
+                      <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -159,8 +209,8 @@ export default function DashboardLayout() {
                         <span className={`
                           px-2 py-1 text-xs font-bold rounded-full border
                           ${item.badge === "live" 
-                            ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" 
-                            : "bg-purple-500/10 text-purple-600 border-purple-500/20"
+                            ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:text-emerald-400" 
+                            : "bg-purple-500/10 text-purple-600 border-purple-500/20 dark:text-purple-400"
                           }
                         `}>
                           {item.badge === "live" ? "LIVE" : "PRO"}
@@ -217,38 +267,31 @@ export default function DashboardLayout() {
                 mb-4 p-4 rounded-2xl border backdrop-blur-lg text-center
                 bg-gradient-to-br from-amber-500/10 to-orange-500/10
                 border-amber-500/20
-                hover:scale-105 transition-transform duration-300
+                hover:scale-105 transition-transform duration-300 cursor-pointer
               `}>
                 <Crown className="w-6 h-6 text-amber-500 mx-auto mb-2" />
-                <p className="text-sm font-semibold text-amber-600 mb-1">
+                <p className="text-sm font-semibold text-amber-600 dark:text-amber-400 mb-1">
                   Upgrade to Pro
                 </p>
-                <p className="text-xs text-amber-500/80">
+                <p className="text-xs text-amber-500/80 dark:text-amber-400/80">
                   Unlock advanced features
                 </p>
               </div>
             )}
 
-            {/* Expand/Collapse button (mobile visible) */}
-            <button
-              onClick={toggleSidebar}
-              className={`
-                lg:hidden w-full flex items-center justify-center gap-2 
-                p-3 rounded-xl transition-all duration-300
-                hover:scale-105 hover:shadow-lg
-                ${theme === "dark"
-                  ? "bg-slate-700/50 text-slate-300 hover:bg-slate-600 hover:text-white"
-                  : "bg-slate-100/50 text-slate-600 hover:bg-slate-200 hover:text-slate-900"
-                }
-              `}
-            >
-              {sidebarCollapsed ? (
-                <ChevronRight className="w-4 h-4" />
-              ) : (
-                <ChevronLeft className="w-4 h-4" />
-              )}
-              <span className="text-sm font-medium">Collapse</span>
-            </button>
+            {/* Collapsed Crown Icon */}
+            {sidebarCollapsed && (
+              <div className="flex justify-center mb-4">
+                <div className={`
+                  p-3 rounded-xl
+                  bg-gradient-to-br from-amber-500/10 to-orange-500/10
+                  border border-amber-500/20
+                  hover:scale-110 transition-transform duration-300 cursor-pointer
+                `}>
+                  <Crown className="w-5 h-5 text-amber-500" />
+                </div>
+              </div>
+            )}
 
             {/* Show Tour button */}
             <button
@@ -287,7 +330,7 @@ export default function DashboardLayout() {
           `}
         >
           <div className="flex items-center justify-between px-6 lg:px-8 py-4">
-            {/* Premium Logo Section */}
+            {/* Premium Logo Section - Mobile */}
             <div className="flex items-center gap-4">
               {/* Mobile Hamburger */}
               <button
@@ -304,32 +347,25 @@ export default function DashboardLayout() {
                 <Menu className="w-5 h-5" />
               </button>
 
-              {/* Premium Logo */}
-              <div className="flex items-center gap-3 group cursor-pointer">
+              {/* Mobile Logo - Only show on mobile when sidebar closed */}
+              <div className="flex lg:hidden items-center gap-3 group cursor-pointer">
                 <div className={`
-                  relative w-12 h-12 rounded-2xl flex items-center justify-center
+                  relative w-10 h-10 rounded-xl flex items-center justify-center
                   bg-gradient-to-br from-blue-500 via-purple-600 to-blue-600
-                  shadow-2xl shadow-blue-500/25
+                  shadow-xl shadow-blue-500/25
                   transition-all duration-500 group-hover:scale-110 group-hover:rotate-12
                 `}>
-                  <TrendingUp className="w-6 h-6 text-white" />
-                  {/* Animated Sparkle */}
-                  <div className="absolute -top-1 -right-1">
-                    <Zap className="w-3 h-3 text-yellow-400 animate-pulse" />
+                  <Activity className="w-5 h-5 text-white" />
+                  <div className="absolute -top-0.5 -right-0.5">
+                    <Zap className="w-2.5 h-2.5 text-yellow-400 animate-pulse" />
                   </div>
                 </div>
                 <div>
-                  <h1 className={`
-                    text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent
-                    transition-all duration-500
-                  `}>
+                  <h1 className="text-xl font-black bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                     BuzzTrack
                   </h1>
-                  <p className={`
-                    text-sm font-medium transition-all duration-500
-                    ${theme === "dark" ? "text-slate-400" : "text-slate-500"}
-                  `}>
-                    Premium Analytics
+                  <p className={`text-xs font-bold ${theme === "dark" ? "text-slate-400" : "text-slate-500"}`}>
+                    Premium
                   </p>
                 </div>
               </div>

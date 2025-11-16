@@ -18,14 +18,20 @@ import {
   detectEmergingTopics 
 } from '../services/topicAnalyzer.js';
 
+const router = express.Router();
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
 /**
  * Parse timeframe string to milliseconds
  */
 function parseTimeframe(timeframe) {
   const units = {
-    'h': 3600000,    // hours to milliseconds
-    'd': 86400000,   // days to milliseconds  
-    'w': 604800000   // weeks to milliseconds
+    'h': 3600000,    // hours
+    'd': 86400000,   // days
+    'w': 604800000   // weeks
   };
   
   const match = timeframe.match(/^(\d+)([hdw])$/);
@@ -43,7 +49,9 @@ function getTimeframeDate(timeframe = '24h') {
   return new Date(Date.now() - ms).toISOString();
 }
 
-// Helper function to get dominant sentiment
+/**
+ * Get dominant sentiment from counts
+ */
 function getDominantSentiment(sentimentCounts) {
   if (!sentimentCounts) return 'neutral';
   
@@ -53,7 +61,9 @@ function getDominantSentiment(sentimentCounts) {
   return 'neutral';
 }
 
-const router = express.Router();
+// ============================================================================
+// MENTIONS ENDPOINTS
+// ============================================================================
 
 /**
  * GET /api/mentions
@@ -84,8 +94,6 @@ router.get('/mentions', (req, res) => {
     );
 
     let mentions = mentionStore.getAll(filters);
-
-    // Apply limit
     mentions = mentions.slice(0, parseInt(limit));
 
     res.json({
@@ -130,9 +138,13 @@ router.get('/mentions/:id', (req, res) => {
   }
 });
 
+// ============================================================================
+// STATS ENDPOINTS
+// ============================================================================
+
 /**
  * GET /api/stats
- * Get statistics for a brand - FIXED VERSION
+ * Get statistics for a specific brand
  */
 router.get('/stats', (req, res) => {
   try {
@@ -145,14 +157,7 @@ router.get('/stats', (req, res) => {
       });
     }
 
-    // Use the mentionStore's getStats method directly
     const stats = mentionStore.getStats(brand, timeframe);
-
-    console.log(`📊 API /stats for ${brand}:`, {
-      total: stats.total,
-      sources: stats.sources,
-      sentiment: stats.sentiment
-    });
 
     // Ensure sources object has all expected properties
     const ensuredSources = {
@@ -160,27 +165,199 @@ router.get('/stats', (req, res) => {
       news: stats.sources?.news || 0,
     };
 
-    const response = {
+    res.json({
       success: true,
       brand,
       timeframe,
       stats: {
         ...stats,
-        sources: ensuredSources // Use the ensured sources
+        sources: ensuredSources
       }
-    };
-
-    console.log(`📤 Sending response for ${brand}:`, response.stats.sources);
-    res.json(response);
+    });
 
   } catch (error) {
-    console.error('❌ Error in /stats route:', error);
+    console.error('Error in /stats route:', error);
     res.status(500).json({
       success: false,
       error: error.message
     });
   }
 });
+
+/**
+ * GET /api/stats/overview
+ * Get comprehensive platform-wide statistics
+ */
+router.get('/stats/overview', (req, res) => {
+  try {
+    const { timeframe = '24h' } = req.query;
+    const brands = getTrackedBrands();
+    
+    // Validate timeframe format
+    if (!timeframe.match(/^\d+[hdw]$/)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid timeframe format. Use: 1h, 6h, 24h, 7d, 30d, 4w'
+      });
+    }
+
+    // Collect stats from all brands
+    const allStats = brands.map(brand => {
+      const mentions = mentionStore.getAll({
+        brand,
+        startDate: getTimeframeDate(timeframe)
+      });
+      
+      const sentimentCounts = { positive: 0, neutral: 0, negative: 0 };
+      const sourceCounts = {};
+      let totalEngagement = 0;
+
+      mentions.forEach(m => {
+        sentimentCounts[m.sentiment]++;
+        sourceCounts[m.source] = (sourceCounts[m.source] || 0) + 1;
+        totalEngagement += m.engagement.likes + m.engagement.comments + m.engagement.shares;
+      });
+
+      return {
+        total: mentions.length,
+        sentiment: sentimentCounts,
+        sources: sourceCounts,
+        avgEngagement: mentions.length > 0 ? Math.round(totalEngagement / mentions.length) : 0
+      };
+    });
+
+    // Calculate platform breakdown
+    const platformBreakdown = { reddit: 0, news: 0 };
+    allStats.forEach(stat => {
+      Object.entries(stat.sources || {}).forEach(([source, count]) => {
+        platformBreakdown[source] = (platformBreakdown[source] || 0) + count;
+      });
+    });
+
+    // Calculate overall sentiment
+    const sentimentOverview = { positive: 0, neutral: 0, negative: 0 };
+    allStats.forEach(stat => {
+      Object.entries(stat.sentiment || {}).forEach(([type, count]) => {
+        sentimentOverview[type] += count;
+      });
+    });
+
+    // Convert to percentages
+    const totalMentions = allStats.reduce((sum, stat) => sum + stat.total, 0);
+    if (totalMentions > 0) {
+      Object.keys(sentimentOverview).forEach(key => {
+        sentimentOverview[key] = Math.round((sentimentOverview[key] / totalMentions) * 100);
+      });
+    }
+
+    // Get top performing brands
+    const topPerformingBrands = brands
+      .map((brand, index) => ({
+        brand,
+        mentions: allStats[index]?.total || 0,
+        sentiment: getDominantSentiment(allStats[index]?.sentiment),
+        engagement: allStats[index]?.avgEngagement || 0
+      }))
+      .sort((a, b) => b.mentions - a.mentions)
+      .slice(0, 5);
+
+    res.json({
+      success: true,
+      overview: {
+        timeframe,
+        totalMentions,
+        totalBrands: brands.length,
+        platformBreakdown,
+        sentimentOverview,
+        topPerformingBrands
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/stats/sources-comparison
+ * Compare performance across different data sources
+ */
+router.get('/stats/sources-comparison', (req, res) => {
+  try {
+    const { timeframe = '24h' } = req.query;
+    const brands = getTrackedBrands();
+    
+    if (!timeframe.match(/^\d+[hdw]$/)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid timeframe format'
+      });
+    }
+
+    const analyzeSource = (source) => {
+      const sourceData = brands.map(brand => {
+        const mentions = mentionStore.getAll({
+          brand,
+          source,
+          startDate: getTimeframeDate(timeframe)
+        });
+        
+        let totalSentiment = 0;
+        let totalEngagement = 0;
+        
+        mentions.forEach(m => {
+          totalSentiment += m.sentimentScore;
+          totalEngagement += m.engagement.likes + m.engagement.comments + m.engagement.shares;
+        });
+
+        return {
+          brand,
+          mentions: mentions.length,
+          avgSentiment: mentions.length > 0 ? totalSentiment / mentions.length : 0,
+          avgEngagement: mentions.length > 0 ? totalEngagement / mentions.length : 0
+        };
+      });
+
+      const totalMentions = sourceData.reduce((sum, item) => sum + item.mentions, 0);
+      const avgSentiment = sourceData.reduce((sum, item) => sum + item.avgSentiment, 0) / Math.max(brands.length, 1);
+      const avgEngagement = sourceData.reduce((sum, item) => sum + item.avgEngagement, 0) / Math.max(brands.length, 1);
+
+      const topBrands = sourceData
+        .sort((a, b) => b.mentions - a.mentions)
+        .slice(0, 3)
+        .map(item => item.brand);
+
+      return {
+        totalMentions,
+        avgSentiment: parseFloat(avgSentiment.toFixed(3)),
+        avgEngagement: parseFloat(avgEngagement.toFixed(1)),
+        topBrands
+      };
+    };
+
+    res.json({
+      success: true,
+      timeframe,
+      comparison: {
+        reddit: analyzeSource('reddit'),
+        news: analyzeSource('news')
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// ============================================================================
+// SPIKES ENDPOINTS
+// ============================================================================
 
 /**
  * GET /api/spikes
@@ -242,6 +419,10 @@ router.get('/spikes/history', (req, res) => {
   }
 });
 
+// ============================================================================
+// BRANDS ENDPOINTS
+// ============================================================================
+
 /**
  * GET /api/brands
  * Get list of tracked brands
@@ -280,7 +461,6 @@ router.post('/brands', (req, res) => {
     }
 
     const result = addBrand(brand);
-
     res.status(result.success ? 200 : 400).json(result);
 
   } catch (error) {
@@ -298,7 +478,6 @@ router.post('/brands', (req, res) => {
 router.delete('/brands/:brand', (req, res) => {
   try {
     const result = removeBrand(req.params.brand);
-
     res.status(result.success ? 200 : 400).json(result);
 
   } catch (error) {
@@ -316,7 +495,6 @@ router.delete('/brands/:brand', (req, res) => {
 router.post('/collect/:brand', async (req, res) => {
   try {
     const result = await triggerCollection(req.params.brand);
-
     res.json(result);
 
   } catch (error) {
@@ -326,6 +504,10 @@ router.post('/collect/:brand', async (req, res) => {
     });
   }
 });
+
+// ============================================================================
+// OVERVIEW ENDPOINT
+// ============================================================================
 
 /**
  * GET /api/overview
@@ -360,182 +542,9 @@ router.get('/overview', (req, res) => {
   }
 });
 
-/**
- * GET /api/stats/overview
- * Get comprehensive platform-wide statistics
- */
-router.get('/stats/overview', (req, res) => {
-  try {
-    const { timeframe = '24h' } = req.query;
-    const brands = getTrackedBrands();
-    
-    // Validate timeframe format
-    if (!timeframe.match(/^\d+[hdw]$/)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid timeframe format. Use like: 1h, 6h, 24h, 7d, 30d, 4w'
-      });
-    }
-
-    // Collect stats from all brands using flexible timeframe
-    const allStats = brands.map(brand => {
-      const mentions = mentionStore.getAll({
-        brand,
-        startDate: getTimeframeDate(timeframe)
-      });
-      
-      const sentimentCounts = { positive: 0, neutral: 0, negative: 0 };
-      const sourceCounts = {};
-      let totalEngagement = 0;
-
-      mentions.forEach(m => {
-        sentimentCounts[m.sentiment]++;
-        sourceCounts[m.source] = (sourceCounts[m.source] || 0) + 1;
-        totalEngagement += m.engagement.likes + m.engagement.comments + m.engagement.shares;
-      });
-
-      return {
-        total: mentions.length,
-        sentiment: sentimentCounts,
-        sources: sourceCounts,
-        avgEngagement: mentions.length > 0 ? Math.round(totalEngagement / mentions.length) : 0,
-        mentions
-      };
-    });
-
-    // Calculate platform breakdown
-    const platformBreakdown = { reddit: 0, news: 0 };
-    allStats.forEach(stat => {
-      Object.entries(stat.sources || {}).forEach(([source, count]) => {
-        platformBreakdown[source] = (platformBreakdown[source] || 0) + count;
-      });
-    });
-
-    // Calculate overall sentiment
-    const sentimentOverview = { positive: 0, neutral: 0, negative: 0 };
-    allStats.forEach(stat => {
-      Object.entries(stat.sentiment || {}).forEach(([type, count]) => {
-        sentimentOverview[type] += count;
-      });
-    });
-
-    // Convert to percentages
-    const totalMentions = allStats.reduce((sum, stat) => sum + stat.total, 0);
-    if (totalMentions > 0) {
-      Object.keys(sentimentOverview).forEach(key => {
-        sentimentOverview[key] = Math.round((sentimentOverview[key] / totalMentions) * 100);
-      });
-    }
-
-    // Get top performing brands
-    const topPerformingBrands = brands
-      .map((brand, index) => ({
-        brand,
-        mentions: allStats[index]?.total || 0,
-        sentiment: getDominantSentiment(allStats[index]?.sentiment),
-        engagement: allStats[index]?.avgEngagement || 0
-      }))
-      .sort((a, b) => b.mentions - a.mentions)
-      .slice(0, 5);
-
-    const overview = {
-      timeframe,
-      totalMentions,
-      totalBrands: brands.length,
-      platformBreakdown,
-      sentimentOverview,
-      topPerformingBrands
-    };
-
-    res.json({
-      success: true,
-      overview
-    });
-
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-/**
- * GET /api/stats/sources-comparison
- * Compare performance across different data sources
- */
-router.get('/stats/sources-comparison', (req, res) => {
-  try {
-    const { timeframe = '24h' } = req.query;
-    const brands = getTrackedBrands();
-    
-    // Validate timeframe format
-    if (!timeframe.match(/^\d+[hdw]$/)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid timeframe format. Use like: 1h, 6h, 24h, 7d, 30d, 4w'
-      });
-    }
-
-    const analyzeSource = (source) => {
-      const sourceData = brands.map(brand => {
-        const mentions = mentionStore.getAll({
-          brand,
-          source,
-          startDate: getTimeframeDate(timeframe)
-        });
-        
-        let totalSentiment = 0;
-        let totalEngagement = 0;
-        
-        mentions.forEach(m => {
-          totalSentiment += m.sentimentScore;
-          totalEngagement += m.engagement.likes + m.engagement.comments + m.engagement.shares;
-        });
-
-        return {
-          brand,
-          mentions: mentions.length,
-          avgSentiment: mentions.length > 0 ? totalSentiment / mentions.length : 0,
-          avgEngagement: mentions.length > 0 ? totalEngagement / mentions.length : 0
-        };
-      });
-
-      const totalMentions = sourceData.reduce((sum, item) => sum + item.mentions, 0);
-      const avgSentiment = sourceData.reduce((sum, item) => sum + item.avgSentiment, 0) / Math.max(brands.length, 1);
-      const avgEngagement = sourceData.reduce((sum, item) => sum + item.avgEngagement, 0) / Math.max(brands.length, 1);
-
-      const topBrands = sourceData
-        .sort((a, b) => b.mentions - a.mentions)
-        .slice(0, 3)
-        .map(item => item.brand);
-
-      return {
-        totalMentions,
-        avgSentiment: parseFloat(avgSentiment.toFixed(3)),
-        avgEngagement: parseFloat(avgEngagement.toFixed(1)),
-        topBrands
-      };
-    };
-
-    const comparison = {
-      reddit: analyzeSource('reddit'),
-      news: analyzeSource('news')
-    };
-
-    res.json({
-      success: true,
-      timeframe,
-      comparison
-    });
-
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
+// ============================================================================
+// TOPICS ENDPOINTS
+// ============================================================================
 
 /**
  * GET /api/topics/trending
@@ -582,7 +591,8 @@ router.get('/topics/brand/:brand', (req, res) => {
       success: true,
       brand,
       timeframe,
-      topics
+      topics,
+      totalMentions: mentions.length
     });
 
   } catch (error) {
@@ -781,8 +791,13 @@ router.get('/topics/emerging', (req, res) => {
   }
 });
 
+// ============================================================================
+// DEBUG ENDPOINTS (Remove in production)
+// ============================================================================
+
 /**
- * DEBUG: Get raw data collection status
+ * GET /api/debug/collection-status
+ * Get raw data collection status
  */
 router.get('/debug/collection-status', (req, res) => {
   try {
@@ -827,7 +842,8 @@ router.get('/debug/collection-status', (req, res) => {
 });
 
 /**
- * DEBUG: Test News API directly
+ * GET /api/debug/news-test
+ * Test News API directly
  */
 router.get('/debug/news-test', async (req, res) => {
   try {
