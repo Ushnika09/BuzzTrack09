@@ -2,10 +2,10 @@
 
 > Real-time brand monitoring across Reddit, News, and Social Media with AI-powered sentiment analysis and conversation spike detection.
 
-[![Live Demo](https://img.shields.io/badge/Demo-Live-brightgreen)](https://buzztrack.netlify.app/)
-[![API Status](https://img.shields.io/badge/API-Active-blue)](https://buzztrack09-production.up.railway.app/health)
-[![React](https://img.shields.io/badge/React-18.3-61dafb)](https://reactjs.org/)
-[![Node.js](https://img.shields.io/badge/Node.js-20.x-339933)](https://nodejs.org/)
+[![Live Demo]](https://buzztrack.netlify.app/)
+[![API Status]](https://buzztrack09-production.up.railway.app/health)
+[![React]](https://reactjs.org/)
+[![Node.js]](https://nodejs.org/)
 
 ---
 
@@ -16,13 +16,9 @@
 - [Solution Overview](#-solution-overview)
 - [Key Features](#-key-features)
 - [Tech Stack](#-tech-stack)
-- [Architecture](#-architecture)
 - [Installation](#-installation)
 - [API Documentation](#-api-documentation)
-- [Feature Highlights](#-feature-highlights)
 - [Technical Decisions](#-technical-decisions)
-- [Challenges & Solutions](#-challenges--solutions)
-- [Future Enhancements](#-future-enhancements)
 
 ---
 
@@ -36,7 +32,7 @@
 
 ---
 
-## 🎯 Problem Statement
+## 🎯 ***Problem Statement***
 
 Marketers struggle to monitor brand mentions across multiple platforms in real-time. Critical conversations—especially negative sentiment or viral spikes—often go unnoticed, leading to:
 - Missed opportunities for engagement
@@ -49,7 +45,7 @@ Marketers struggle to monitor brand mentions across multiple platforms in real-t
 ## 💡 Solution Overview
 
 **BuzzTrack** is an intelligent brand monitoring platform that:
-- ✅ Aggregates mentions from Reddit, News APIs, and Social Media
+- ✅ Aggregates mentions from Reddit, News APIs
 - ✅ Analyzes sentiment using VADER AI (positive/neutral/negative)
 - ✅ Detects conversation spikes in real-time
 - ✅ Clusters topics and identifies trending themes
@@ -63,11 +59,9 @@ Marketers struggle to monitor brand mentions across multiple platforms in real-t
 ### 1. **Real-Time Monitoring**
 - Live mention feed with WebSocket streaming
 - Instant spike alerts (🔥 visual notifications)
-- Auto-refresh every 30-60 seconds
 
 ### 2. **AI-Powered Sentiment Analysis**
 - VADER sentiment analyzer (context-aware)
-- Emoji detection & intensity analysis
 - Negation handling ("not good" → negative)
 - Brand-proximity sentiment weighting
 
@@ -75,10 +69,8 @@ Marketers struggle to monitor brand mentions across multiple platforms in real-t
 - TF-IDF keyword extraction
 - Topic clustering by themes (quality, price, service, etc.)
 - Trending topic detection with velocity calculation
-- Cross-brand topic comparison
 
 ### 4. **Spike Detection System**
-- Configurable thresholds (default: 2x increase)
 - 7-day rolling window comparison
 - Source breakdown during spikes
 - Top engaging mentions identified
@@ -90,13 +82,13 @@ Marketers struggle to monitor brand mentions across multiple platforms in real-t
 - Responsive design (mobile-optimized)
 
 ### 6. **Export Analytics** *(Feature)*
-- CSV, JSON, XLSX, PDF formats
+- JSON formats
 - Customizable date ranges & filters
 - Sentiment reports & topic exports
 - Cross-brand comparison exports
 
 ### 7. **Onboarding Tour**
-- Interactive 10-step guided tour
+- Interactive guided tour
 - Smart positioning with spotlights
 - Skip/navigate functionality
 
@@ -126,58 +118,10 @@ Marketers struggle to monitor brand mentions across multiple platforms in real-t
 ### **Data Sources**
 - **Reddit API** - Public posts/comments (no auth required)
 - **News API** - Global news articles (free tier)
-- **Twitter/X** - *(Optional, requires API access)*
 
 ### **Deployment**
 - **Frontend**: Netlify (CDN + Auto-deploy)
 - **Backend**: Railway (Serverless Node.js)
-- **Storage**: In-memory (MVP) with optional SQLite
-
----
-
-## 🏗️ Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     CLIENT (React + Vite)                   │
-│  ┌──────────────┐  ┌──────────────┐  ┌─────────────────┐  │
-│  │  Dashboard   │  │  Analytics   │  │  Topics Page    │  │
-│  └──────────────┘  └──────────────┘  └─────────────────┘  │
-│         │                  │                    │           │
-│         └──────────────────┴────────────────────┘           │
-│                            │                                │
-│                    React Query Layer                        │
-│                            │                                │
-└────────────────────────────┼────────────────────────────────┘
-                             │
-                    WebSocket (Socket.io)
-                             │
-┌────────────────────────────┼────────────────────────────────┐
-│                    SERVER (Node.js + Express)               │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │              REST API Endpoints                       │  │
-│  │  /api/mentions  /api/stats  /api/topics  /api/spikes│  │
-│  └──────────────────────────────────────────────────────┘  │
-│         │                  │                    │           │
-│  ┌──────▼──────┐    ┌──────▼──────┐    ┌───────▼──────┐   │
-│  │ Sentiment   │    │   Topic     │    │   Spike      │   │
-│  │ Analyzer    │    │  Analyzer   │    │  Detector    │   │
-│  └─────────────┘    └─────────────┘    └──────────────┘   │
-│         │                                       │           │
-│  ┌──────▼───────────────────────────────────────▼───────┐  │
-│  │            Data Collector (Node-cron)               │  │
-│  │   ┌──────────┐  ┌──────────┐  ┌──────────┐        │  │
-│  │   │  Reddit  │  │   News   │  │ Twitter  │        │  │
-│  │   │Collector │  │Collector │  │Collector │        │  │
-│  │   └──────────┘  └──────────┘  └──────────┘        │  │
-│  └────────────────────────────────────────────────────┘  │
-│                            │                              │
-│                    ┌───────▼────────┐                     │
-│                    │  Mention Store │                     │
-│                    │  (In-Memory)   │                     │
-│                    └────────────────┘                     │
-└──────────────────────────────────────────────────────────┘
-```
 
 ---
 
@@ -191,13 +135,13 @@ Marketers struggle to monitor brand mentions across multiple platforms in real-t
 
 ### 1. Clone Repository
 ```bash
-git clone https://github.com/yourusername/buzztrack.git
+git clone https://github.com/Ushnika09/BuzzTrack09.git
 cd buzztrack
 ```
 
 ### 2. Backend Setup
 ```bash
-cd server
+cd backend
 npm install
 
 # Create .env file
@@ -207,16 +151,6 @@ NODE_ENV=development
 
 # API Keys
 NEWS_API_KEY=your_news_api_key_here
-REDDIT_CLIENT_ID=optional
-REDDIT_CLIENT_SECRET=optional
-
-# Intervals (milliseconds)
-REDDIT_INTERVAL=300000
-NEWS_INTERVAL=600000
-
-# Spike Detection
-SPIKE_THRESHOLD=2.0
-SPIKE_MIN_MENTIONS=5
 EOF
 
 # Start server
@@ -225,7 +159,7 @@ npm run dev
 
 ### 3. Frontend Setup
 ```bash
-cd ../client
+cd frontend
 npm install
 
 # Create .env file
@@ -237,125 +171,6 @@ EOF
 # Start development server
 npm run dev
 ```
-
-### 4. Access Application
-- Frontend: `http://localhost:5173`
-- Backend: `http://localhost:5000`
-- API Docs: `http://localhost:5000/api`
-
----
-
-## 📚 API Documentation
-
-### Base URL
-```
-Production: https://buzztrack09-production.up.railway.app/api
-Development: http://localhost:5000/api
-```
-
-### Endpoints
-
-#### **Mentions**
-```http
-GET /api/mentions?brand=Nike&timeframe=24h&sentiment=positive
-GET /api/mentions/:id
-```
-
-#### **Stats**
-```http
-GET /api/stats?brand=Nike&timeframe=7d
-GET /api/stats/overview?timeframe=24h
-GET /api/stats/sources-comparison?timeframe=7d
-```
-
-#### **Topics**
-```http
-GET /api/topics?brand=Nike&timeframe=24h&limit=20
-GET /api/topics/trending?brand=Nike&limit=10
-GET /api/topics/clusters?brand=Nike&timeframe=24h
-GET /api/topics/timeline/:keyword?brand=Nike&hours=24
-GET /api/topics/compare?timeframe=7d
-```
-
-#### **Spikes**
-```http
-GET /api/spikes?brand=Nike
-GET /api/spikes/history?brand=Nike&days=7
-```
-
-#### **Brands**
-```http
-GET /api/brands
-POST /api/brands
-DELETE /api/brands/:brand
-POST /api/collect/:brand
-```
-
-#### **Health Check**
-```http
-GET /health
-```
-
-### WebSocket Events
-
-#### **Client → Server**
-```javascript
-socket.emit('join-brand', 'Nike');
-socket.emit('leave-brand', 'Nike');
-```
-
-#### **Server → Client**
-```javascript
-socket.on('new-mention', (mention) => { /* ... */ });
-socket.on('spike-alert', (spike) => { /* ... */ });
-socket.on('mentions-batch', (data) => { /* ... */ });
-```
-
----
-
-## 🎨 Feature Highlights
-
-### **1. Premium Dashboard**
-- **Drag-and-drop widgets** - Rearrange your layout
-- **Live stat cards** - Animated counters with gradient effects
-- **Real-time updates** - WebSocket-powered live feed
-- **Dark/Light themes** - Smooth theme transitions
-
-### **2. Sentiment Analysis**
-- **VADER AI** - 89% accuracy on social media text
-- **Context-aware** - Analyzes text around brand mentions
-- **Visual breakdown** - Pie charts with hover effects
-- **Emoji support** - Detects 😊 😞 😐 sentiment
-
-### **3. Topic Intelligence**
-- **TF-IDF extraction** - Identifies important keywords
-- **8 categories** - Quality, price, service, product, etc.
-- **Trending detection** - 5x velocity = "HOT" badge
-- **Word cloud** - Size-based frequency visualization
-
-### **4. Spike Alerts**
-- **Real-time notifications** - Toast + card alerts
-- **Visual indicators** - 🔥 animation on spikes
-- **Smart thresholds** - Configurable sensitivity
-- **Top mentions** - Shows highest engagement posts
-
-### **5. Export Analytics**
-```javascript
-// Available Formats
-- CSV (Excel-compatible)
-- JSON (Developer-friendly)
-- XLSX (Advanced formatting)
-- PDF (Professional reports)
-
-// Export Types
-- Mention Data Export
-- Sentiment Reports
-- Topic Analysis
-- Spike History
-- Cross-Brand Comparison
-```
-
----
 
 ## 🧠 Technical Decisions
 
@@ -391,109 +206,7 @@ socket.on('mentions-batch', (data) => { /* ... */ });
 
 ---
 
-## 🚧 Challenges & Solutions
 
-### **Challenge 1: Real-Time Updates at Scale**
-**Problem**: Updating 1000s of mentions in real-time caused UI lag.
-
-**Solution**:
-- Implemented WebSocket rooms (per-brand isolation)
-- Used React Query's `setQueryData` for optimistic updates
-- Batched mention updates (max 10/second)
-- Virtual scrolling for mention feed
-
-### **Challenge 2: Accurate Sentiment Analysis**
-**Problem**: Generic sentiment tools failed on sarcasm and context.
-
-**Solution**:
-- Integrated VADER (social media-optimized)
-- Added brand-proximity weighting (text near brand = higher weight)
-- Implemented emoji + punctuation analysis
-- Negation handling ("not good" → negative)
-
-### **Challenge 3: Spike Detection False Positives**
-**Problem**: Normal fluctuations triggered false spike alerts.
-
-**Solution**:
-- 7-day rolling window comparison (vs 1-hour)
-- Minimum threshold (5 mentions + 2x increase)
-- Configurable sensitivity per brand
-- Cooldown period (10 minutes between alerts)
-
-### **Challenge 4: Topic Extraction Quality**
-**Problem**: Generic stop words left noise in topics.
-
-**Solution**:
-- Enhanced stop word list (social media specific)
-- TF-IDF scoring with document frequency boost
-- Minimum 2-mention threshold per topic
-- Brand name exclusion from topics
-
-### **Challenge 5: Cross-Origin API Calls**
-**Problem**: CORS errors blocked Reddit/News API requests.
-
-**Solution**:
-- Server-side data collection (proxy)
-- CORS middleware with whitelist
-- API rate limiting (100 req/hour)
-- Error handling with retry logic
-
----
-
-## 🔮 Future Enhancements
-
-### **Phase 1: Enhanced Analytics**
-- [ ] Historical trend graphs (30/60/90 days)
-- [ ] Competitor benchmarking
-- [ ] Custom alert rules (email/Slack)
-- [ ] Advanced filtering (location, author, platform)
-
-### **Phase 2: AI Improvements**
-- [ ] GPT-4 sentiment analysis (optional toggle)
-- [ ] Automatic response suggestions
-- [ ] Crisis detection (negative spike patterns)
-- [ ] Influencer identification
-
-### **Phase 3: Platform Expansion**
-- [ ] Twitter/X integration (full support)
-- [ ] LinkedIn monitoring
-- [ ] YouTube comments
-- [ ] TikTok mentions
-
-### **Phase 4: Enterprise Features**
-- [ ] Multi-user teams
-- [ ] Role-based access control
-- [ ] White-label customization
-- [ ] API webhooks for integrations
-- [ ] PostgreSQL storage migration
-
----
-
-## 📊 Performance Metrics
-
-| Metric | Value |
-|--------|-------|
-| **Initial Load** | < 2s |
-| **API Response Time** | 50-200ms |
-| **WebSocket Latency** | < 100ms |
-| **Sentiment Analysis** | ~50ms per mention |
-| **Topic Extraction** | ~200ms for 100 mentions |
-| **Memory Usage** | ~150MB (10K mentions) |
-| **Lighthouse Score** | 95+ (Performance) |
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
----
 
 ## 📄 License
 
@@ -504,9 +217,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 👨‍💻 Author
 
 **Your Name**
-- GitHub: [@yourusername](https://github.com/yourusername)
-- LinkedIn: [Your Name](https://linkedin.com/in/yourprofile)
-- Email: your.email@example.com
+- GitHub: [@ushnika09](https://github.com/Ushnika09)
+- LinkedIn: [Ushnika](https://www.linkedin.com/in/ushnika-kar-32246a36a/)
+- Email: karushnika@gmail.com
 
 ---
 
@@ -520,21 +233,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-## 📞 Support
-
-For issues or questions:
-- 📧 Email: support@buzztrack.com
-- 🐛 Issues: [GitHub Issues](https://github.com/yourusername/buzztrack/issues)
-- 💬 Discord: [Join our community](https://discord.gg/buzztrack)
-
----
 
 <div align="center">
 
 **⭐ Star this repo if you found it helpful!**
 
-Made with ❤️ by [Your Name]
+Made with ❤️ by Ushnika
 
-[Live Demo](https://buzztrack.netlify.app/) • [API Docs](https://buzztrack09-production.up.railway.app/api) • [Report Bug](https://github.com/yourusername/buzztrack/issues)
+[Live Demo](https://buzztrack.netlify.app/) • [API Docs](https://buzztrack09-production.up.railway.app/api) 
 
 </div>
