@@ -1,9 +1,10 @@
 // client/src/pages/Home.jsx
 import { useState, useEffect } from 'react';
-import { Plus, GripVertical, Sparkles, Zap, TrendingUp, Users, MessageCircle, Target ,X} from 'lucide-react';
+import { Plus, GripVertical, Sparkles, Zap, TrendingUp, Users, MessageCircle, Target, X } from 'lucide-react';
 import { useBrands } from '../hooks/useBrands';
 import { useToast } from '../context/ToastContext';
 import { useTheme } from '../context/ThemeContext';
+import { brandsAPI } from '../services/api';
 
 import StatCard from '../components/Dashboard/StatCard';
 import MentionFeed from '../components/Dashboard/MentionFeed';
@@ -28,7 +29,7 @@ export default function Home() {
   const [isDragging, setIsDragging] = useState(false);
 
   const { theme } = useTheme();
-  const { data: brandsData, isLoading: brandsLoading } = useBrands();
+  const { data: brandsData, isLoading: brandsLoading, refetch } = useBrands();
   const { toast } = useToast();
 
   const brands = brandsData?.brands || [];
@@ -42,6 +43,24 @@ export default function Home() {
   useEffect(() => {
     localStorage.setItem('dashboard-widget-order', JSON.stringify(widgetOrder));
   }, [widgetOrder]);
+
+  const handleDeleteBrand = async (e, brand) => {
+    e.stopPropagation();
+    
+    try {
+      await brandsAPI.remove(brand);
+      toast.success(`${brand} removed successfully`);
+      
+      if (selectedBrand === brand) {
+        const remainingBrands = brands.filter(b => b !== brand);
+        setSelectedBrand(remainingBrands.length > 0 ? remainingBrands[0] : null);
+      }
+      
+      refetch();
+    } catch (error) {
+      toast.error('Failed to remove brand');
+    }
+  };
 
   const handleDragStart = (e, widget) => {
     setDraggedWidget(widget);
@@ -226,7 +245,7 @@ export default function Home() {
             </button>
           </div>
 
-          {/* Enhanced Brand Pills */}
+          {/* Enhanced Brand Pills with Delete */}
           <div 
             data-tour="brand-pills"
             className="flex gap-3 overflow-x-auto pb-3 scrollbar-hide"
@@ -251,6 +270,20 @@ export default function Home() {
                   }
                 `} />
                 <span className="font-semibold">{brand}</span>
+                
+                {/* Delete button */}
+                <button
+                  onClick={(e) => handleDeleteBrand(e, brand)}
+                  className={`
+                    ml-1 p-1 rounded-full transition-all duration-300
+                    ${selectedBrand === brand
+                      ? 'text-white/70 hover:text-white hover:bg-white/20'
+                      : `${mutedText} hover:text-red-500 ${theme === 'dark' ? 'hover:bg-red-500/10' : 'hover:bg-red-50'}`
+                    }
+                  `}
+                >
+                  <X className="w-4 h-4" />
+                </button>
                 
                 {/* Hover glow effect */}
                 <div className={`
