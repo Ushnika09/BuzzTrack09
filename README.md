@@ -4,8 +4,6 @@
 
 [![Live Demo]](https://buzztrack.netlify.app/)
 [![API Status]](https://buzztrack09-production.up.railway.app/health)
-[![React]](https://reactjs.org/)
-[![Node.js]](https://nodejs.org/)
 
 ---
 
@@ -94,7 +92,7 @@ Marketers struggle to monitor brand mentions across multiple platforms in real-t
 
 ---
 
-## 🛠️ Tech stack
+## 🛠️ Tech Stack
 
 ### **Frontend**
 | Technology | Purpose |
