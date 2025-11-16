@@ -11,7 +11,7 @@ export default function WebSocketDebug({ brand }) {
   }
 
   return (
-    <div className="fixed bottom-4 left-4 bg-slate-900 text-white p-4 rounded-lg shadow-xl text-xs font-mono max-w-sm z-50">
+    <div className="fixed bottom-59 left-4 bg-slate-900 text-white p-4 rounded-lg shadow-xl text-xs font-mono max-w-sm z-50">
       <div className="flex items-center gap-2 mb-2 font-bold">
         {isConnected ? (
           <>

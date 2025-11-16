@@ -27,21 +27,18 @@ export default function Analytics() {
   const [timeframe, setTimeframe] = useState('24h');
   const { theme } = useTheme();
   
-  // Fetch overview data
   const { data: overviewData, isLoading: overviewLoading } = useQuery({
     queryKey: ['stats-overview', timeframe],
     queryFn: () => statsAPI.getOverview(timeframe).then(res => res.data),
     refetchInterval: 60000,
   });
 
-  // Fetch source comparison
   const { data: sourceData, isLoading: sourceLoading } = useQuery({
     queryKey: ['sources-comparison', timeframe],
     queryFn: () => statsAPI.getSourcesComparison(timeframe).then(res => res.data),
     refetchInterval: 60000,
   });
 
-  // Fetch brands
   const { data: brandsData } = useQuery({
     queryKey: ['brands'],
     queryFn: () => brandsAPI.getAll().then(res => res.data),
@@ -66,7 +63,6 @@ export default function Analytics() {
     a.click();
   };
 
-  // Theme-based classes
   const bgClass = theme === 'dark' ? 'bg-gradient-to-br from-slate-900 to-slate-800' : 'bg-gradient-to-br from-slate-50 to-blue-50/20';
   const textClass = theme === 'dark' ? 'text-white' : 'text-slate-900';
   const mutedText = theme === 'dark' ? 'text-slate-400' : 'text-slate-600';
@@ -108,10 +104,12 @@ export default function Analytics() {
             </div>
 
             <div className="flex items-center gap-4">
-              <TimeframeSelector value={timeframe} onChange={setTimeframe} />
+              <div data-tour="timeframe-selector">
+                <TimeframeSelector value={timeframe} onChange={setTimeframe} />
+              </div>
               
-              {/* Premium Export Button */}
               <button
+                data-tour="export-button"
                 onClick={handleExport}
                 className={`
                   flex items-center gap-3 px-5 py-3 rounded-2xl font-semibold
@@ -129,7 +127,7 @@ export default function Analytics() {
             </div>
           </div>
 
-          {/* Premium Key Metrics Grid */}
+          {/* Key Metrics Grid */}
           {overviewLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {[...Array(4)].map((_, i) => (
@@ -137,72 +135,35 @@ export default function Analytics() {
               ))}
             </div>
           ) : overview ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <MetricCard
-                label="Total Mentions"
-                value={overview.totalMentions}
-                icon={MessageCircle}
-                color="blue"
-                trend="+12%"
-                description="Across all platforms"
-                theme={theme}
-              />
-              <MetricCard
-                label="Tracked Brands"
-                value={overview.totalBrands}
-                icon={Users}
-                color="purple"
-                description="Active monitoring"
-                theme={theme}
-              />
-              <MetricCard
-                label="Positive Rate"
-                value={`${overview.sentimentOverview?.positive || 0}%`}
-                icon={ThumbsUp}
-                color="green"
-                trend="+5%"
-                description="Positive sentiment"
-                theme={theme}
-              />
-              <MetricCard
-                label="Engagement Score"
-                value={Math.round(overview.avgEngagement || 0)}
-                icon={Zap}
-                color="orange"
-                description="Average per mention"
-                theme={theme}
-              />
+            <div data-tour="analytics-metrics" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <MetricCard label="Total Mentions" value={overview.totalMentions} icon={MessageCircle} color="blue" trend="+12%" description="Across all platforms" theme={theme} />
+              <MetricCard label="Tracked Brands" value={overview.totalBrands} icon={Users} color="purple" description="Active monitoring" theme={theme} />
+              <MetricCard label="Positive Rate" value={`${overview.sentimentOverview?.positive || 0}%`} icon={ThumbsUp} color="green" trend="+5%" description="Positive sentiment" theme={theme} />
+              <MetricCard label="Engagement Score" value={Math.round(overview.avgEngagement || 0)} icon={Zap} color="orange" description="Average per mention" theme={theme} />
             </div>
           ) : null}
 
-          {/* Premium Charts Grid */}
+          {/* Charts Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <PlatformBreakdown 
-              data={overview?.platformBreakdown} 
-              isLoading={overviewLoading}
-            />
-            <TopPerformingBrands 
-              brands={overview?.topPerformingBrands} 
-              isLoading={overviewLoading}
-            />
+            <div data-tour="platform-breakdown">
+              <PlatformBreakdown data={overview?.platformBreakdown} isLoading={overviewLoading} />
+            </div>
+            <div data-tour="top-brands">
+              <TopPerformingBrands brands={overview?.topPerformingBrands} isLoading={overviewLoading} />
+            </div>
           </div>
 
-          {/* Full-width Charts */}
-          <SourceComparisonChart 
-            data={sourceData?.comparison} 
-            isLoading={sourceLoading}
-            timeframe={timeframe}
-          />
+          <div data-tour="source-comparison">
+            <SourceComparisonChart data={sourceData?.comparison} isLoading={sourceLoading} timeframe={timeframe} />
+          </div>
 
-          <BrandComparisonChart 
-            brands={brands} 
-            timeframe={timeframe}
-          />
+          <div data-tour="brand-comparison">
+            <BrandComparisonChart brands={brands} timeframe={timeframe} />
+          </div>
 
-          <SentimentTrendChart 
-            brands={brands} 
-            timeframe={timeframe}
-          />
+          <div data-tour="sentiment-trends">
+            <SentimentTrendChart brands={brands} timeframe={timeframe} />
+          </div>
 
         </div>
       </div>
@@ -210,33 +171,13 @@ export default function Analytics() {
   );
 }
 
-// Premium Metric Card Component
+// MetricCard remains unchanged
 function MetricCard({ label, value, icon: Icon, color, trend, description, theme }) {
   const colorConfig = {
-    blue: {
-      gradient: 'from-blue-500 to-cyan-500',
-      bg: 'bg-blue-500/10',
-      text: 'text-blue-600 dark:text-blue-400',
-      trend: 'text-blue-600 dark:text-blue-400'
-    },
-    purple: {
-      gradient: 'from-purple-500 to-indigo-500',
-      bg: 'bg-purple-500/10',
-      text: 'text-purple-600 dark:text-purple-400',
-      trend: 'text-purple-600 dark:text-purple-400'
-    },
-    green: {
-      gradient: 'from-emerald-500 to-teal-500',
-      bg: 'bg-green-500/10',
-      text: 'text-green-600 dark:text-green-400',
-      trend: 'text-green-600 dark:text-green-400'
-    },
-    orange: {
-      gradient: 'from-amber-500 to-orange-500',
-      bg: 'bg-orange-500/10',
-      text: 'text-orange-600 dark:text-orange-400',
-      trend: 'text-orange-600 dark:text-orange-400'
-    },
+    blue: { gradient: 'from-blue-500 to-cyan-500', bg: 'bg-blue-500/10', text: 'text-blue-600 dark:text-blue-400', trend: 'text-blue-600 dark:text-blue-400' },
+    purple: { gradient: 'from-purple-500 to-indigo-500', bg: 'bg-purple-500/10', text: 'text-purple-600 dark:text-purple-400', trend: 'text-purple-600 dark:text-purple-400' },
+    green: { gradient: 'from-emerald-500 to-teal-500', bg: 'bg-green-500/10', text: 'text-green-600 dark:text-green-400', trend: 'text-green-600 dark:text-green-400' },
+    orange: { gradient: 'from-amber-500 to-orange-500', bg: 'bg-orange-500/10', text: 'text-orange-600 dark:text-orange-400', trend: 'text-orange-600 dark:text-orange-400' },
   };
 
   const config = colorConfig[color] || colorConfig.blue;
@@ -245,22 +186,14 @@ function MetricCard({ label, value, icon: Icon, color, trend, description, theme
     <div className={`
       group relative overflow-hidden rounded-2xl border backdrop-blur-sm
       transition-all duration-500 hover:scale-105 hover:shadow-2xl
-      ${theme === 'dark' 
-        ? 'bg-slate-800/50 border-slate-700/50' 
-        : 'bg-white/80 border-slate-200/50'
-      }
+      ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700/50' : 'bg-white/80 border-slate-200/50'}
     `}>
-      {/* Gradient Top Bar */}
       <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${config.gradient} rounded-t-2xl`} />
 
       <div className="relative z-10 p-6">
-        {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
-            <h3 className={`
-              font-semibold text-sm
-              ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}
-            `}>
+            <h3 className={`font-semibold text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
               {label}
             </h3>
             {description && (
@@ -269,50 +202,26 @@ function MetricCard({ label, value, icon: Icon, color, trend, description, theme
               </p>
             )}
           </div>
-          <div className={`
-            w-12 h-12 rounded-xl flex items-center justify-center
-            bg-gradient-to-br ${config.gradient} shadow-lg
-            transition-transform duration-300 group-hover:scale-110
-          `}>
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br ${config.gradient} shadow-lg transition-transform duration-300 group-hover:scale-110`}>
             <Icon className="w-6 h-6 text-white" />
           </div>
         </div>
 
-        {/* Value and Trend */}
         <div className="flex items-end justify-between">
-          <div className={`
-            text-3xl font-bold
-            ${theme === 'dark' ? 'text-white' : 'text-slate-900'}
-          `}>
+          <div className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
             {value}
           </div>
-          
           {trend && (
             <div className="flex items-center gap-1">
               <TrendingUp className={`w-4 h-4 ${config.trend}`} />
-              <span className={`text-sm font-semibold ${config.trend}`}>
-                {trend}
-              </span>
+              <span className={`text-sm font-semibold ${config.trend}`}>{trend}</span>
             </div>
           )}
         </div>
       </div>
 
-      {/* Hover Effect */}
-      <div className={`
-        absolute inset-0 opacity-0 group-hover:opacity-100 
-        transition-opacity duration-500 pointer-events-none rounded-2xl
-        bg-gradient-to-br ${config.gradient}
-        mix-blend-overlay
-      `} />
-      
-      {/* Glow Effect */}
-      <div className={`
-        absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-30 
-        transition-opacity duration-500 pointer-events-none
-        bg-gradient-to-r ${config.gradient} blur-xl
-        -inset-2
-      `} />
+      <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none rounded-2xl bg-gradient-to-br ${config.gradient} mix-blend-overlay`} />
+      <div className={`absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-30 transition-opacity duration-500 pointer-events-none bg-gradient-to-r ${config.gradient} blur-xl -inset-2`} />
     </div>
   );
 }

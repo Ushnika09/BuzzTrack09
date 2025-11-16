@@ -37,19 +37,19 @@ export default function TopicClusters({ brand, timeframe = '24h' }) {
   });
 
   // Theme classes
-  const cardBg = theme === 'dark' ? 'bg-slate-800' : 'bg-white';
-  const borderClass = theme === 'dark' ? 'border-slate-700' : 'border-slate-200';
+  const cardBg = theme === 'dark' ? 'bg-slate-800/90' : 'bg-white/95';
+  const borderClass = theme === 'dark' ? 'border-slate-700/50' : 'border-slate-200/80';
   const mutedText = theme === 'dark' ? 'text-slate-400' : 'text-slate-600';
-  const hoverBg = theme === 'dark' ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50';
-  const inputBg = theme === 'dark' ? 'bg-slate-700' : 'bg-slate-50';
-  const inputBorder = theme === 'dark' ? 'border-slate-600' : 'border-slate-200';
+  const hoverBg = theme === 'dark' ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50/80';
+  const inputBg = theme === 'dark' ? 'bg-slate-700/50' : 'bg-slate-50/80';
+  const inputBorder = theme === 'dark' ? 'border-slate-600/50' : 'border-slate-300/80';
   const textClass = theme === 'dark' ? 'text-white' : 'text-slate-900';
 
   if (isLoading) return <ChartSkeleton className="h-96" />;
 
   if (error) {
     return (
-      <div className={`${cardBg} ${borderClass} border rounded-2xl p-12`}>
+      <div className={`${cardBg} ${borderClass} border-2 rounded-2xl p-12 backdrop-blur-sm`}>
         <EmptyState
           type="error"
           title="Failed to Load Clusters"
@@ -62,7 +62,7 @@ export default function TopicClusters({ brand, timeframe = '24h' }) {
 
   if (!data || !data.clusters || data.clusters.length === 0) {
     return (
-      <div className={`${cardBg} ${borderClass} border rounded-2xl p-12`}>
+      <div className={`${cardBg} ${borderClass} border-2 rounded-2xl p-12 backdrop-blur-sm`}>
         <EmptyState
           type="noData"
           title="No Topic Clusters Yet"
@@ -98,22 +98,22 @@ export default function TopicClusters({ brand, timeframe = '24h' }) {
     positive: { 
       dot: 'bg-emerald-500', 
       text: 'text-emerald-600 dark:text-emerald-400', 
-      bg: 'bg-emerald-50 dark:bg-emerald-900/20',
-      border: 'border-emerald-200 dark:border-emerald-800',
+      bg: theme === 'dark' ? 'bg-emerald-900/20' : 'bg-emerald-50/80',
+      border: theme === 'dark' ? 'border-emerald-800' : 'border-emerald-200',
       ring: 'ring-emerald-500/20'
     },
     neutral: { 
       dot: 'bg-slate-500', 
       text: 'text-slate-600 dark:text-slate-400',
-      bg: 'bg-slate-50 dark:bg-slate-900/20',
-      border: 'border-slate-200 dark:border-slate-800',
+      bg: theme === 'dark' ? 'bg-slate-900/20' : 'bg-slate-50/80',
+      border: theme === 'dark' ? 'border-slate-800' : 'border-slate-200',
       ring: 'ring-slate-500/20'
     },
     negative: { 
       dot: 'bg-rose-500', 
       text: 'text-rose-600 dark:text-rose-400',
-      bg: 'bg-rose-50 dark:bg-rose-900/20',
-      border: 'border-rose-200 dark:border-rose-800',
+      bg: theme === 'dark' ? 'bg-rose-900/20' : 'bg-rose-50/80',
+      border: theme === 'dark' ? 'border-rose-800' : 'border-rose-200',
       ring: 'ring-rose-500/20'
     },
   };
@@ -122,26 +122,66 @@ export default function TopicClusters({ brand, timeframe = '24h' }) {
 
   const getGrowthIndicator = (count) => {
     const ratio = count / maxCount;
-    if (ratio >= 0.7) return { color: 'text-rose-600 dark:text-rose-400', label: 'Very High', icon: '🔥' };
-    if (ratio >= 0.4) return { color: 'text-orange-600 dark:text-orange-400', label: 'High', icon: '📈' };
-    if (ratio >= 0.2) return { color: 'text-emerald-600 dark:text-emerald-400', label: 'Growing', icon: '📊' };
-    return { color: mutedText, label: 'Stable', icon: '📉' };
+    if (ratio >= 0.7) return { 
+      color: 'text-rose-600 dark:text-rose-400', 
+      label: 'Very High', 
+      icon: '🔥',
+      bg: 'bg-gradient-to-r from-rose-500 to-orange-500'
+    };
+    if (ratio >= 0.4) return { 
+      color: 'text-orange-600 dark:text-orange-400', 
+      label: 'High', 
+      icon: '📈',
+      bg: 'bg-gradient-to-r from-orange-500 to-amber-500'
+    };
+    if (ratio >= 0.2) return { 
+      color: 'text-emerald-600 dark:text-emerald-400', 
+      label: 'Growing', 
+      icon: '📊',
+      bg: 'bg-gradient-to-r from-emerald-500 to-green-500'
+    };
+    return { 
+      color: mutedText, 
+      label: 'Stable', 
+      icon: '📉',
+      bg: theme === 'dark' ? 'bg-slate-700' : 'bg-slate-300'
+    };
   };
 
   const getEngagementLevel = (engagement) => {
-    if (engagement > 100) return { color: 'text-purple-600 dark:text-purple-400', label: 'Viral', bg: 'bg-purple-100 dark:bg-purple-900/30' };
-    if (engagement > 50) return { color: 'text-blue-600 dark:text-blue-400', label: 'High', bg: 'bg-blue-100 dark:bg-blue-900/30' };
-    if (engagement > 20) return { color: 'text-emerald-600 dark:text-emerald-400', label: 'Good', bg: 'bg-emerald-100 dark:bg-emerald-900/30' };
-    return { color: mutedText, label: 'Low', bg: 'bg-slate-100 dark:bg-slate-900/30' };
+    if (engagement > 100) return { 
+      color: 'text-purple-600 dark:text-purple-400', 
+      label: 'Viral', 
+      bg: theme === 'dark' ? 'bg-purple-900/30' : 'bg-purple-100/80'
+    };
+    if (engagement > 50) return { 
+      color: 'text-blue-600 dark:text-blue-400', 
+      label: 'High', 
+      bg: theme === 'dark' ? 'bg-blue-900/30' : 'bg-blue-100/80'
+    };
+    if (engagement > 20) return { 
+      color: 'text-emerald-600 dark:text-emerald-400', 
+      label: 'Good', 
+      bg: theme === 'dark' ? 'bg-emerald-900/30' : 'bg-emerald-100/80'
+    };
+    return { 
+      color: mutedText, 
+      label: 'Low', 
+      bg: theme === 'dark' ? 'bg-slate-900/30' : 'bg-slate-100/80'
+    };
   };
 
   const totalMentions = data.clusters.reduce((sum, c) => sum + c.count, 0);
   const avgEngagement = data.clusters.reduce((sum, c) => sum + (c.avgEngagement || 0), 0) / data.clusters.length;
 
   return (
-    <div className={`${cardBg} ${borderClass} border rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-500 overflow-hidden`}>
+    <div className={`${cardBg} ${borderClass} border-2 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-500 overflow-hidden backdrop-blur-sm`}>
       {/* Premium Header with Live Stats */}
-      <div className={`p-6 border-b ${borderClass} bg-gradient-to-r from-purple-500/5 to-pink-500/5`}>
+      <div className={`p-6 border-b-2 ${borderClass} ${
+        theme === 'dark' 
+          ? 'bg-gradient-to-r from-purple-500/5 to-pink-500/5' 
+          : 'bg-gradient-to-r from-purple-50/60 to-pink-50/40'
+      }`}>
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           <div className="flex items-center gap-4">
             <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-xl">
@@ -161,19 +201,31 @@ export default function TopicClusters({ brand, timeframe = '24h' }) {
           
           {/* Enhanced Stats Grid */}
           <div className="grid grid-cols-3 gap-4">
-            <div className="text-center p-3 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10">
+            <div className={`text-center p-3 rounded-xl border-2 ${
+              theme === 'dark' 
+                ? 'bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-800/30' 
+                : 'bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200/60'
+            }`}>
               <div className={`text-2xl font-black ${textClass}`}>
                 {filteredClusters.length}
               </div>
               <div className="text-xs font-semibold text-blue-600 dark:text-blue-400">Clusters</div>
             </div>
-            <div className="text-center p-3 rounded-xl bg-gradient-to-br from-purple-500/10 to-pink-500/10">
+            <div className={`text-center p-3 rounded-xl border-2 ${
+              theme === 'dark' 
+                ? 'bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-purple-800/30' 
+                : 'bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200/60'
+            }`}>
               <div className={`text-2xl font-black ${textClass}`}>
                 {totalMentions.toLocaleString()}
               </div>
               <div className="text-xs font-semibold text-purple-600 dark:text-purple-400">Mentions</div>
             </div>
-            <div className="text-center p-3 rounded-xl bg-gradient-to-br from-emerald-500/10 to-green-500/10">
+            <div className={`text-center p-3 rounded-xl border-2 ${
+              theme === 'dark' 
+                ? 'bg-gradient-to-br from-emerald-500/10 to-green-500/10 border-emerald-800/30' 
+                : 'bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-200/60'
+            }`}>
               <div className={`text-2xl font-black ${textClass}`}>
                 {avgEngagement.toFixed(0)}
               </div>
@@ -192,7 +244,7 @@ export default function TopicClusters({ brand, timeframe = '24h' }) {
               placeholder="Search topics, keywords, themes..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full pl-11 pr-4 py-3 rounded-xl border-2 ${inputBorder} ${inputBg} text-sm font-medium focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-300 ${textClass}`}
+              className={`w-full pl-11 pr-4 py-3 rounded-xl border-2 ${inputBorder} ${inputBg} text-sm font-medium focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-300 ${textClass} backdrop-blur-sm`}
             />
           </div>
 
@@ -203,7 +255,7 @@ export default function TopicClusters({ brand, timeframe = '24h' }) {
               <select
                 value={sentimentFilter}
                 onChange={(e) => setSentimentFilter(e.target.value)}
-                className={`pl-10 pr-4 py-3 rounded-xl border-2 ${inputBorder} ${inputBg} text-sm font-semibold focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-300 ${textClass} appearance-none`}
+                className={`pl-10 pr-4 py-3 rounded-xl border-2 ${inputBorder} ${inputBg} text-sm font-semibold focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-300 ${textClass} appearance-none backdrop-blur-sm`}
               >
                 <option value="all">All Sentiments</option>
                 <option value="positive">😊 Positive</option>
@@ -215,7 +267,7 @@ export default function TopicClusters({ brand, timeframe = '24h' }) {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className={`px-4 py-3 rounded-xl border-2 ${inputBorder} ${inputBg} text-sm font-semibold focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-300 ${textClass}`}
+              className={`px-4 py-3 rounded-xl border-2 ${inputBorder} ${inputBg} text-sm font-semibold focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-300 ${textClass} backdrop-blur-sm`}
             >
               <option value="mentions">📊 Most Mentions</option>
               <option value="growth">📈 Highest Growth</option>
@@ -243,14 +295,16 @@ export default function TopicClusters({ brand, timeframe = '24h' }) {
                 <div className={`
                   absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 
                   transition-opacity duration-500 pointer-events-none blur-2xl -z-10
-                  ${index === 0 ? 'bg-amber-500/20' :
-                    index === 1 ? 'bg-slate-500/20' : 'bg-orange-500/20'}
+                  ${index === 0 ? theme === 'dark' ? 'bg-amber-500/20' : 'bg-amber-500/10' :
+                    index === 1 ? theme === 'dark' ? 'bg-slate-500/20' : 'bg-slate-500/10' : 
+                    theme === 'dark' ? 'bg-orange-500/20' : 'bg-orange-500/10'
+                  }
                 `} />
               )}
 
               <div
                 className={`
-                  rounded-2xl border-2 transition-all duration-500 overflow-hidden
+                  rounded-2xl border-2 transition-all duration-500 overflow-hidden backdrop-blur-sm
                   ${isExpanded 
                     ? 'border-purple-500/60 shadow-2xl shadow-purple-500/20 ring-4 ring-purple-500/10 scale-[1.02]' 
                     : `${borderClass} hover:border-purple-400/50 hover:shadow-xl hover:scale-[1.01]`
@@ -292,20 +346,19 @@ export default function TopicClusters({ brand, timeframe = '24h' }) {
                         {/* Dynamic Status Badges */}
                         {growth.icon && (
                           <span className={`
-                            px-3 py-1.5 text-xs font-black rounded-full
-                            bg-gradient-to-r ${
-                              growth.label === 'Very High' ? 'from-rose-500 to-orange-500' :
-                              growth.label === 'High' ? 'from-orange-500 to-amber-500' :
-                              'from-emerald-500 to-green-500'
-                            }
-                            text-white shadow-lg flex items-center gap-1
+                            px-3 py-1.5 text-xs font-black rounded-full text-white shadow-lg flex items-center gap-1
+                            ${growth.bg}
                           `}>
                             {growth.icon} {growth.label}
                           </span>
                         )}
 
                         {cluster.keywords && cluster.keywords.length > 0 && (
-                          <span className="px-3 py-1.5 text-xs font-bold rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                          <span className={`px-3 py-1.5 text-xs font-bold rounded-full ${
+                            theme === 'dark' 
+                              ? 'bg-blue-900/30 text-blue-300' 
+                              : 'bg-blue-100 text-blue-700'
+                          }`}>
                             {cluster.keywords.length} keywords
                           </span>
                         )}
@@ -313,28 +366,40 @@ export default function TopicClusters({ brand, timeframe = '24h' }) {
                       
                       {/* Premium Metrics Grid */}
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${sentiment.bg}`}>
+                        <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 ${sentiment.bg} ${sentiment.border}`}>
                           <div className={`w-3 h-3 rounded-full ${sentiment.dot} ring-4 ${sentiment.ring}`} />
                           <span className={`font-bold text-xs ${sentiment.text} capitalize`}>
                             {cluster.sentiment}
                           </span>
                         </div>
                         
-                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-700/50">
+                        <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 ${
+                          theme === 'dark' 
+                            ? 'bg-slate-700/50 border-slate-600' 
+                            : 'bg-slate-100 border-slate-200'
+                        }`}>
                           <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                           <span className={`font-bold text-xs ${textClass}`}>
                             {cluster.count.toLocaleString()}
                           </span>
                         </div>
 
-                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-700/50">
+                        <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 ${
+                          theme === 'dark' 
+                            ? 'bg-slate-700/50 border-slate-600' 
+                            : 'bg-slate-100 border-slate-200'
+                        }`}>
                           <MessageCircle className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                           <span className={`font-bold text-xs ${textClass}`}>
                             {(cluster.avgEngagement || 0).toFixed(0)}
                           </span>
                         </div>
 
-                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-700/50">
+                        <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 ${
+                          theme === 'dark' 
+                            ? 'bg-slate-700/50 border-slate-600' 
+                            : 'bg-slate-100 border-slate-200'
+                        }`}>
                           <TrendingUp className={`w-4 h-4 ${growth.color}`} />
                           <span className={`font-bold text-xs ${growth.color}`}>
                             {growth.label}
@@ -348,13 +413,17 @@ export default function TopicClusters({ brand, timeframe = '24h' }) {
                           {cluster.keywords.slice(0, 5).map((keyword, idx) => (
                             <span 
                               key={idx}
-                              className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${sentiment.bg} ${sentiment.border} border`}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-semibold border-2 ${sentiment.bg} ${sentiment.border}`}
                             >
                               {keyword}
                             </span>
                           ))}
                           {cluster.keywords.length > 5 && (
-                            <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${mutedText}`}>
+                            <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${mutedText} ${
+                              theme === 'dark' 
+                                ? 'bg-slate-700/50 border-slate-600' 
+                                : 'bg-slate-100 border-slate-200'
+                            } border-2`}>
                               +{cluster.keywords.length - 5} more
                             </span>
                           )}
@@ -365,10 +434,10 @@ export default function TopicClusters({ brand, timeframe = '24h' }) {
 
                   {/* Premium Expand Button */}
                   <div className={`
-                    p-4 rounded-xl transition-all duration-500 flex-shrink-0
+                    p-4 rounded-xl transition-all duration-500 flex-shrink-0 border-2
                     ${isExpanded 
-                      ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg' 
-                      : `${inputBg} ${mutedText} group-hover:bg-purple-100 dark:group-hover:bg-purple-900/30`
+                      ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg border-transparent' 
+                      : `${inputBg} ${mutedText} ${inputBorder} group-hover:bg-purple-100 dark:group-hover:bg-purple-900/30 group-hover:border-purple-300 dark:group-hover:border-purple-700`
                     }
                   `}>
                     {isExpanded ? (
@@ -381,10 +450,14 @@ export default function TopicClusters({ brand, timeframe = '24h' }) {
 
                 {/* Premium Expanded Content */}
                 {isExpanded && (
-                  <div className={`px-6 pb-6 pt-4 border-t ${borderClass} bg-gradient-to-b from-transparent to-purple-500/5`}>
+                  <div className={`px-6 pb-6 pt-4 border-t-2 ${borderClass} ${
+                    theme === 'dark' 
+                      ? 'bg-gradient-to-b from-transparent to-purple-500/5' 
+                      : 'bg-gradient-to-b from-transparent to-purple-50/30'
+                  }`}>
                     {/* Enhanced Metrics Dashboard */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                      <div className={`p-4 rounded-xl ${engagement.bg} border ${sentiment.border} text-center transition-transform hover:scale-105`}>
+                      <div className={`p-4 rounded-xl border-2 ${engagement.bg} ${sentiment.border} text-center transition-transform hover:scale-105`}>
                         <div className={`text-xs font-bold ${engagement.color} mb-1`}>Engagement</div>
                         <div className={`text-2xl font-black ${textClass}`}>
                           {(cluster.avgEngagement || 0).toFixed(0)}
@@ -394,7 +467,7 @@ export default function TopicClusters({ brand, timeframe = '24h' }) {
                         </div>
                       </div>
                       
-                      <div className={`p-4 rounded-xl ${sentiment.bg} border ${sentiment.border} text-center transition-transform hover:scale-105`}>
+                      <div className={`p-4 rounded-xl border-2 ${sentiment.bg} ${sentiment.border} text-center transition-transform hover:scale-105`}>
                         <div className={`text-xs font-bold ${sentiment.text} mb-1`}>Sentiment</div>
                         <div className={`text-2xl font-black ${textClass}`}>
                           {cluster.sentiment === 'positive' ? '😊' : cluster.sentiment === 'negative' ? '😞' : '😐'}
@@ -404,7 +477,11 @@ export default function TopicClusters({ brand, timeframe = '24h' }) {
                         </div>
                       </div>
                       
-                      <div className="p-4 rounded-xl bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 text-center transition-transform hover:scale-105">
+                      <div className={`p-4 rounded-xl border-2 ${
+                        theme === 'dark' 
+                          ? 'bg-blue-900/30 border-blue-800' 
+                          : 'bg-blue-100 border-blue-200'
+                      } text-center transition-transform hover:scale-105`}>
                         <div className="text-xs font-bold text-blue-600 dark:text-blue-400 mb-1">Total Reach</div>
                         <div className={`text-2xl font-black ${textClass}`}>
                           {cluster.count.toLocaleString()}
@@ -414,7 +491,11 @@ export default function TopicClusters({ brand, timeframe = '24h' }) {
                         </div>
                       </div>
                       
-                      <div className="p-4 rounded-xl bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 text-center transition-transform hover:scale-105">
+                      <div className={`p-4 rounded-xl border-2 ${
+                        theme === 'dark' 
+                          ? 'bg-purple-900/30 border-purple-800' 
+                          : 'bg-purple-100 border-purple-200'
+                      } text-center transition-transform hover:scale-105`}>
                         <div className="text-xs font-bold text-purple-600 dark:text-purple-400 mb-1">Keywords</div>
                         <div className={`text-2xl font-black ${textClass}`}>
                           {cluster.keywords?.length || 0}
@@ -439,7 +520,7 @@ export default function TopicClusters({ brand, timeframe = '24h' }) {
                             target="_blank"
                             rel="noopener noreferrer"
                             className={`
-                              block p-5 rounded-xl border-2 transition-all duration-300 group
+                              block p-5 rounded-xl border-2 transition-all duration-300 group backdrop-blur-sm
                               ${cardBg} ${borderClass} hover:shadow-xl hover:border-purple-400/60 hover:scale-[1.02]
                             `}
                           >
@@ -449,21 +530,37 @@ export default function TopicClusters({ brand, timeframe = '24h' }) {
                                   {mention.content}
                                 </p>
                                 <div className="flex items-center gap-3 text-xs flex-wrap">
-                                  <span className={`px-3 py-1.5 rounded-full font-bold capitalize ${
-                                    mention.sentiment === 'positive' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300' :
-                                    mention.sentiment === 'negative' ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300' :
-                                    'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
+                                  <span className={`px-3 py-1.5 rounded-full font-bold capitalize border-2 ${
+                                    mention.sentiment === 'positive' 
+                                      ? theme === 'dark' 
+                                        ? 'bg-emerald-900/30 text-emerald-300 border-emerald-800' 
+                                        : 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                                      : mention.sentiment === 'negative'
+                                      ? theme === 'dark'
+                                        ? 'bg-rose-900/30 text-rose-300 border-rose-800'
+                                        : 'bg-rose-100 text-rose-700 border-rose-200'
+                                      : theme === 'dark'
+                                      ? 'bg-slate-700 text-slate-400 border-slate-600'
+                                      : 'bg-slate-100 text-slate-600 border-slate-200'
                                   }`}>
                                     {mention.sentiment}
                                   </span>
-                                  <span className="px-3 py-1.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-bold capitalize">
+                                  <span className={`px-3 py-1.5 rounded-full font-bold capitalize border-2 ${
+                                    theme === 'dark' 
+                                      ? 'bg-blue-900/30 text-blue-300 border-blue-800' 
+                                      : 'bg-blue-100 text-blue-700 border-blue-200'
+                                  }`}>
                                     {mention.source}
                                   </span>
                                   <span className={`font-semibold ${mutedText}`}>
                                     {new Date(mention.timestamp).toLocaleDateString()}
                                   </span>
                                   {mention.engagement && (
-                                    <span className="px-3 py-1.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-bold">
+                                    <span className={`px-3 py-1.5 rounded-full font-bold border-2 ${
+                                      theme === 'dark' 
+                                        ? 'bg-purple-900/30 text-purple-300 border-purple-800' 
+                                        : 'bg-purple-100 text-purple-700 border-purple-200'
+                                    }`}>
                                       💬 {mention.engagement.comments || 0}
                                     </span>
                                   )}
@@ -485,7 +582,11 @@ export default function TopicClusters({ brand, timeframe = '24h' }) {
 
       {/* Premium Footer with Insights */}
       {filteredClusters.length > 0 && (
-        <div className={`px-6 py-5 border-t ${borderClass} bg-gradient-to-r from-slate-50 to-purple-50/30 dark:from-slate-800 dark:to-purple-900/10`}>
+        <div className={`px-6 py-5 border-t-2 ${borderClass} ${
+          theme === 'dark' 
+            ? 'bg-gradient-to-r from-slate-800 to-purple-900/10' 
+            : 'bg-gradient-to-r from-slate-50 to-purple-50/30'
+        }`}>
           <div className="flex items-center justify-between">
             <div className={`text-sm font-semibold ${textClass}`}>
               Showing <span className="text-purple-600 dark:text-purple-400 font-black">{filteredClusters.length}</span> of <span className="font-black">{data.clusters.length}</span> clusters

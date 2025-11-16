@@ -287,7 +287,7 @@ export default function Home() {
               >
                 {/* Enhanced Floating Drag Handle */}
                 <div className={`
-                  absolute top-4 right-4 z-10 opacity-0 group-hover:opacity-100 
+                  absolute top-4 right-4 z-100 opacity-0 group-hover:opacity-100 
                   transition-all duration-300 p-2 rounded-xl backdrop-blur-lg border
                   cursor-grab active:cursor-grabbing
                   ${theme === 'dark' 

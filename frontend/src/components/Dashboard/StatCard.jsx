@@ -3,7 +3,7 @@ import { useBrandStats } from '../../hooks/useBrandStats';
 import { useRealtime } from '../../hooks/useRealtime';
 import { StatCardSkeleton } from '../UI/Skeleton';
 import { useTheme } from '../../context/ThemeContext';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 
 const stats = [
   { 
@@ -77,11 +77,10 @@ function AnimatedCounter({ value, duration = 1000, suffix = '', prefix = '' }) {
   return <>{prefix}{count.toLocaleString()}{suffix}</>;
 }
 
-export default function StatCard({ brand, isDragging = false, onDragStart, widgetKey = 'stats' }) {
+export default function StatCard({ brand, isDragging = false }) {
   const { data, isLoading } = useBrandStats(brand);
   const { spike } = useRealtime(brand);
   const { theme } = useTheme();
-  const dragHandleRef = useRef(null);
 
   const hasActiveSpike = spike?.detected === true;
 
@@ -107,13 +106,6 @@ export default function StatCard({ brand, isDragging = false, onDragStart, widge
 
   const positivePercentage = values.total > 0 ? Math.round((values.positive / values.total) * 100) : 0;
   const negativePercentage = values.total > 0 ? Math.round((values.negative / values.total) * 100) : 0;
-
-  const handleDragStart = (e) => {
-    e.stopPropagation(); // Prevent event bubbling
-    if (onDragStart) {
-      onDragStart(e, widgetKey);
-    }
-  };
 
   return (
     <div className="grid grid-cols-2 gap-6 transition-all duration-500">
@@ -144,7 +136,7 @@ export default function StatCard({ brand, isDragging = false, onDragStart, widge
               }
               border-2 shadow-xl ${isInteractive ? 'hover:shadow-2xl' : ''} ${glowColor}
               transition-all duration-500 ${isInteractive ? 'hover:-translate-y-2 hover:scale-[1.02]' : ''}
-              ${isDragging ? 'opacity-50 cursor-grabbing' : ''}
+              ${isDragging ? 'opacity-50' : ''}
             `}
           >
             {/* Animated Gradient Background */}
