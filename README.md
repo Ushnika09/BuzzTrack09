@@ -15,7 +15,7 @@
 - [Problem Statement](#-problem-statement)
 - [Solution Overview](#-solution-overview)
 - [Key Features](#-key-features)
-- [Tech Stack](#-tech-stack)
+- [Tech Stack](#tech-stack)
 - [Installation](#-installation)
 - [API Documentation](#-api-documentation)
 - [Technical Decisions](#-technical-decisions)
