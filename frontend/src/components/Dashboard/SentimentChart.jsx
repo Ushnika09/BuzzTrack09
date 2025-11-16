@@ -61,8 +61,8 @@ export default function SentimentChart({ brand, timeframe = '7d' }) {
         <div className={`
           p-3 rounded-lg shadow-lg border backdrop-blur-sm
           ${theme === 'dark' 
-            ? 'bg-slate-800 border-slate-600 text-white' 
-            : 'bg-white border-slate-200 text-slate-900'
+            ? 'bg-white border-slate-600 text-slate-900' 
+            : 'bg-slate-800 border-slate-200 text-white'
           }
         `}>
           <div className="flex items-center gap-2 mb-1">
@@ -161,8 +161,8 @@ export default function SentimentChart({ brand, timeframe = '7d' }) {
               data={chartData}
               cx="50%"
               cy="50%"
-              innerRadius={70}
-              outerRadius={90}
+              innerRadius={80}
+              outerRadius={100}
               paddingAngle={2}
               dataKey="value"
               animationDuration={500}
@@ -185,10 +185,10 @@ export default function SentimentChart({ brand, timeframe = '7d' }) {
         {/* Center total count */}
         <div className={`
           absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 
-          text-center pointer-events-none
+          text-center pointer-events-none opacity-50
         `}>
           <div className={`
-            text-2xl font-bold
+            text-2xl font-bold 
             ${theme === 'dark' ? 'text-white' : 'text-slate-900'}
           `}>
             {totalMentions.toLocaleString()}

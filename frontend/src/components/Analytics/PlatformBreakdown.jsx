@@ -110,7 +110,7 @@ export default function PlatformBreakdown({ data, isLoading }) {
               <p className="text-sm opacity-80">{data.description}</p>
             </div>
           </div>
-          <div className="space-y-1">
+          <div className="space-y-1 ">
             <p className="font-semibold text-lg">{data.value.toLocaleString()} mentions</p>
             <p className="text-sm opacity-80">{percentage}% of total</p>
           </div>
@@ -133,10 +133,10 @@ export default function PlatformBreakdown({ data, isLoading }) {
       <text 
         x={x} 
         y={y} 
-        fill="white" 
+        fill={theme === 'dark' ? '#ffffff' : '#0f172a'}
         textAnchor={x > cx ? 'start' : 'end'} 
         dominantBaseline="central"
-        className="text-xs font-bold drop-shadow-lg"
+        className={`text-xs font-bold drop-shadow-lg `}
       >
         {`${(percent * 100).toFixed(0)}%`}
       </text>

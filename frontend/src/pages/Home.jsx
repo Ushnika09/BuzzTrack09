@@ -1,6 +1,6 @@
 // client/src/pages/Home.jsx
 import { useState, useEffect } from 'react';
-import { Plus, GripVertical, Sparkles, Zap, TrendingUp, Users, MessageCircle, Target } from 'lucide-react';
+import { Plus, GripVertical, Sparkles, Zap, TrendingUp, Users, MessageCircle, Target ,X} from 'lucide-react';
 import { useBrands } from '../hooks/useBrands';
 import { useToast } from '../context/ToastContext';
 import { useTheme } from '../context/ThemeContext';
