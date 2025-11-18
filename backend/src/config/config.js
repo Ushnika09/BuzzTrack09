@@ -8,7 +8,6 @@ export default {
   intervals: {
     reddit: 60000,      // 1 minute
     news: 120000,       // 2 minutes
-    // twitter: 90000,     // 1.5 minutes
     spikeCheck: 300000  // 5 minutes for spike monitoring
   },
   
@@ -32,13 +31,6 @@ export default {
       baseUrl: 'https://newsapi.org/v2',
       pageSize: 20,
       requestsPerDay: 1000
-    },
-    twitter: {
-      enabled: true, //  ENABLED - you have the credentials!
-      baseUrl: 'https://api.twitter.com/2',
-      bearerToken: process.env.X_BEARER_TOKEN,
-      requestsPer15Min: 100, // Free tier limit
-      tweetsPerMonth: 500000
     }
   },
   

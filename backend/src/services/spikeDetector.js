@@ -1,23 +1,13 @@
 // server/src/services/spikeDetector.js
 import config from '../config/config.js';
 import { mentionStore } from '../models/MentionStore.js';
+import { parseTimeframe } from '../utils/helpers.js';
 
 /**
  * Detect conversation spikes for a brand
  */
-// Helper to parse timeframe (same as in api.js)
-function parseTimeframe(timeframe) {
-  const units = { 'h': 3600000, 'd': 86400000, 'w': 604800000 };
-  const match = timeframe.match(/^(\d+)([hdw])$/);
-  if (!match) return 86400000;
-  return parseInt(match[1]) * units[match[2]];
-}
-
-/**
- * Detect conversation spikes for a brand — NOW USING 7d WINDOW
- */
-export function detectSpikes(brand, timeframe = '7d') {  // ← Accept timeframe
-  const timeWindow = parseTimeframe(timeframe); // ← Use dynamic window
+export function detectSpikes(brand, timeframe = '7d') {
+  const timeWindow = parseTimeframe(timeframe);
   const threshold = config.spikeDetection.threshold;
   const minMentions = config.spikeDetection.minMentions;
 
@@ -25,13 +15,13 @@ export function detectSpikes(brand, timeframe = '7d') {  // ← Accept timeframe
   const recentWindowStart = now - timeWindow;
   const previousWindowStart = recentWindowStart - timeWindow;
 
-  // Current window: last 7 days
+  // Current window
   const recentMentions = mentionStore.getAll({
     brand,
     startDate: new Date(recentWindowStart).toISOString()
   });
 
-  // Previous window: 7–14 days ago
+  // Previous window
   const previousMentions = mentionStore.getAll({
     brand,
     startDate: new Date(previousWindowStart).toISOString(),
@@ -39,7 +29,7 @@ export function detectSpikes(brand, timeframe = '7d') {  // ← Accept timeframe
   });
 
   const recentCount = recentMentions.length;
-  const previousCount = Math.max(previousMentions.length, 1); // Avoid divide by zero
+  const previousCount = Math.max(previousMentions.length, 1);
 
   const spikeRatio = recentCount / previousCount;
   const isSpike = recentCount >= minMentions && spikeRatio >= threshold;
@@ -145,7 +135,7 @@ export function monitorAllBrands(trackedBrands) {
  * Get spike history for a brand
  */
 export function getSpikeHistory(brand, days = 7) {
-  const timeWindow = days * 24 * 3600000; // days in milliseconds
+  const timeWindow = days * 24 * 3600000;
   const now = Date.now();
   const startTime = now - timeWindow;
 

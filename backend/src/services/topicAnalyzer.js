@@ -1,4 +1,6 @@
 // server/src/services/topicAnalyzer.js
+import { mentionStore } from '../models/MentionStore.js';
+import { getTimeframeDate } from '../utils/helpers.js';
 
 // Enhanced stop words including common social media terms
 const STOP_WORDS = new Set([
@@ -10,12 +12,10 @@ const STOP_WORDS = new Set([
   'i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', 'your',
   'am', 'been', 'being', 'do', 'does', 'did', 'doing', 'would', 'could', 'ought',
   'get', 'got', 'getting', 'like', 'really', 'one', 'two', 'new', 'about', 'after',
-  // Social media specific
   'http', 'https', 'www', 'com', 'via', 'amp', 'says', 'said', 'make', 'made',
   'want', 'need', 'know', 'think', 'going', 'see', 'look', 'right', 'left', 'back'
 ]);
 
-// Brand-related and generic terms to exclude
 const BRAND_WORDS = new Set([
   'nike', 'apple', 'tesla', 'google', 'amazon', 'microsoft',
   'brand', 'company', 'product', 'business', 'market', 'industry'
@@ -34,12 +34,11 @@ const TOPIC_CATEGORIES = {
 };
 
 /**
- * Enhanced keyword extraction with lemmatization-like features
+ * Extract keywords from text with basic stemming
  */
 function extractKeywords(text) {
   if (!text) return [];
 
-  // Clean and tokenize
   const words = text
     .toLowerCase()
     .replace(/[^\w\s]/g, ' ')
@@ -49,11 +48,10 @@ function extractKeywords(text) {
       word.length > 3 && 
       !STOP_WORDS.has(word) &&
       !BRAND_WORDS.has(word) &&
-      !/^\d+$/.test(word) &&
-      !/^[^\w]+$/.test(word)
+      !/^\d+$/.test(word)
     );
 
-  // Basic stemming (remove common suffixes)
+  // Basic stemming
   return words.map(word => {
     if (word.endsWith('ing')) return word.slice(0, -3);
     if (word.endsWith('ed')) return word.slice(0, -2);
@@ -64,7 +62,7 @@ function extractKeywords(text) {
 }
 
 /**
- * Enhanced TF-IDF calculation with better scoring
+ * Calculate TF-IDF scores for documents
  */
 function calculateTFIDF(documents) {
   const termFrequency = new Map();
@@ -87,13 +85,11 @@ function calculateTFIDF(documents) {
     });
   });
 
-  // Calculate TF-IDF with improved formula
+  // Calculate TF-IDF
   const tfidf = new Map();
   termFrequency.forEach((tf, term) => {
     const df = documentFrequency.get(term) || 1;
-    // Enhanced IDF formula: log((N + 1) / (df + 1)) + 1
     const idf = Math.log((totalDocs + 1) / (df + 1)) + 1;
-    // Boost score for terms that appear in multiple documents
     const boost = df > 1 ? 1.2 : 1.0;
     tfidf.set(term, (tf * idf * boost));
   });
@@ -114,6 +110,14 @@ function categorizeKeyword(keyword) {
 }
 
 /**
+ * Calculate topic importance
+ */
+function calculateImportance(tfidfScore, count, sentimentCounts) {
+  const sentimentWeight = Math.abs(sentimentCounts.positive - sentimentCounts.negative);
+  return (tfidfScore * 0.4) + (count * 0.4) + (sentimentWeight * 0.2);
+}
+
+/**
  * Extract top topics with enhanced metadata
  */
 export function extractTopics(mentions, limit = 20) {
@@ -126,19 +130,15 @@ export function extractTopics(mentions, limit = 20) {
 
   const topics = Array.from(tfidf.entries())
     .sort((a, b) => b[1] - a[1])
-    .slice(0, limit * 2) // Get more initially for better filtering
+    .slice(0, limit * 2)
     .map(([keyword, score]) => {
       const relatedMentions = mentions.filter(m => 
         m.content.toLowerCase().includes(keyword)
       );
 
-      const sentimentCounts = {
-        positive: 0,
-        neutral: 0,
-        negative: 0
-      };
-
+      const sentimentCounts = { positive: 0, neutral: 0, negative: 0 };
       let totalEngagement = 0;
+
       relatedMentions.forEach(m => {
         sentimentCounts[m.sentiment]++;
         totalEngagement += (m.engagement?.likes || 0) + 
@@ -164,7 +164,7 @@ export function extractTopics(mentions, limit = 20) {
         importance: calculateImportance(score, relatedMentions.length, sentimentCounts)
       };
     })
-    .filter(topic => topic.count >= 2) // Minimum 2 mentions
+    .filter(topic => topic.count >= 2)
     .sort((a, b) => b.importance - a.importance)
     .slice(0, limit);
 
@@ -172,15 +172,7 @@ export function extractTopics(mentions, limit = 20) {
 }
 
 /**
- * Calculate topic importance (combines multiple factors)
- */
-function calculateImportance(tfidfScore, count, sentimentCounts) {
-  const sentimentWeight = Math.abs(sentimentCounts.positive - sentimentCounts.negative);
-  return (tfidfScore * 0.4) + (count * 0.4) + (sentimentWeight * 0.2);
-}
-
-/**
- * Enhanced topic clustering with theme detection
+ * Cluster mentions by topic
  */
 export function clusterByTopic(mentions, topTopics = 10) {
   const topics = extractTopics(mentions, topTopics);
@@ -190,7 +182,6 @@ export function clusterByTopic(mentions, topTopics = 10) {
       m.content.toLowerCase().includes(topic.keyword)
     );
 
-    // Calculate additional cluster metrics
     const sources = {};
     const platforms = {};
     relatedMentions.forEach(m => {
@@ -233,36 +224,37 @@ export function clusterByTopic(mentions, topTopics = 10) {
 }
 
 /**
- * Enhanced trending topics with velocity calculation
+ * Get trending topics across brands
  */
-export function getTrendingTopics(mentions, limit = 10) {
-  if (!mentions || mentions.length === 0) {
-    return [];
-  }
+export function getTrendingTopics(brands, timeframe = '24h', limit = 10) {
+  const allMentions = brands.flatMap(brand => 
+    mentionStore.getAll({
+      brand,
+      startDate: getTimeframeDate(timeframe)
+    })
+  );
+
+  if (allMentions.length === 0) return [];
 
   const now = Date.now();
   const recentWindow = 3600000; // 1 hour
   const mediumWindow = 6 * 3600000; // 6 hours
 
-  const recentMentions = mentions.filter(m =>
+  const recentMentions = allMentions.filter(m =>
     now - new Date(m.timestamp).getTime() < recentWindow
   );
   
-  const mediumMentions = mentions.filter(m => {
+  const mediumMentions = allMentions.filter(m => {
     const age = now - new Date(m.timestamp).getTime();
     return age >= recentWindow && age < mediumWindow;
   });
 
-  const olderMentions = mentions.filter(m =>
-    now - new Date(m.timestamp).getTime() >= mediumWindow
-  );
-
   if (recentMentions.length === 0) {
-    return extractTopics(mentions, limit);
+    return extractTopics(allMentions, limit);
   }
 
   const recentTopics = extractTopics(recentMentions, 30);
-  const mediumTopics = extractTopics(mediumMentions.length > 0 ? mediumMentions : olderMentions, 30);
+  const mediumTopics = extractTopics(mediumMentions.length > 0 ? mediumMentions : allMentions, 30);
 
   const mediumCounts = new Map();
   mediumTopics.forEach(t => mediumCounts.set(t.keyword, t.count));
@@ -271,12 +263,7 @@ export function getTrendingTopics(mentions, limit = 10) {
     const oldCount = mediumCounts.get(topic.keyword) || 0;
     const recentCount = topic.count;
     
-    // Calculate velocity (rate of change)
-    const trendRatio = oldCount > 0 
-      ? recentCount / oldCount 
-      : recentCount > 0 ? 10 : 0;
-
-    // Calculate momentum (recent count × ratio)
+    const trendRatio = oldCount > 0 ? recentCount / oldCount : (recentCount > 0 ? 10 : 0);
     const momentum = recentCount * Math.min(trendRatio, 20);
 
     return {
@@ -296,19 +283,13 @@ export function getTrendingTopics(mentions, limit = 10) {
 }
 
 /**
- * Enhanced topic timeline with trend analysis
+ * Get topic timeline for a brand
  */
-export function getTopicTimeline(mentions, topicKeyword, hours = 24) {
-  const filteredMentions = mentions.filter(m =>
-    m.content.toLowerCase().includes(topicKeyword.toLowerCase())
-  );
-
-  if (filteredMentions.length === 0) {
-    return { timeline: [], trend: 'stable', peakHour: null };
-  }
-
+export function getTopicTimeline(brand, days = 7) {
+  const mentions = mentionStore.getAll({ brand });
   const now = Date.now();
   const hourMs = 3600000;
+  const hours = days * 24;
   const timeline = [];
   let maxCount = 0;
   let peakHour = null;
@@ -317,20 +298,13 @@ export function getTopicTimeline(mentions, topicKeyword, hours = 24) {
     const hourStart = now - (i * hourMs);
     const hourEnd = hourStart + hourMs;
     
-    const hourMentions = filteredMentions.filter(m => {
+    const hourMentions = mentions.filter(m => {
       const time = new Date(m.timestamp).getTime();
       return time >= hourStart && time < hourEnd;
     });
 
-    const sentimentCounts = {
-      positive: 0,
-      neutral: 0,
-      negative: 0
-    };
-
-    hourMentions.forEach(m => {
-      sentimentCounts[m.sentiment]++;
-    });
+    const sentimentCounts = { positive: 0, neutral: 0, negative: 0 };
+    hourMentions.forEach(m => sentimentCounts[m.sentiment]++);
 
     const count = hourMentions.length;
     if (count > maxCount) {
@@ -348,7 +322,7 @@ export function getTopicTimeline(mentions, topicKeyword, hours = 24) {
     });
   }
 
-  // Calculate trend (growing, declining, stable)
+  // Calculate trend
   const firstHalf = timeline.slice(0, Math.floor(hours / 2));
   const secondHalf = timeline.slice(Math.floor(hours / 2));
   
@@ -360,20 +334,29 @@ export function getTopicTimeline(mentions, topicKeyword, hours = 24) {
   else if (secondAvg < firstAvg * 0.7) trend = 'declining';
 
   return {
+    brand,
     timeline,
     trend,
     peakHour,
-    totalMentions: filteredMentions.length,
-    avgPerHour: (filteredMentions.length / hours).toFixed(1)
+    totalMentions: mentions.length,
+    avgPerHour: (mentions.length / hours).toFixed(1)
   };
 }
 
 /**
- * Enhanced cross-brand topic comparison
+ * Compare topics across multiple brands
  */
-export function compareTopicsAcrossBrands(mentionsByBrand) {
-  const brandTopics = {};
+export function compareTopicsAcrossBrands(brandList, timeframe = '24h') {
+  const mentionsByBrand = {};
+  
+  brandList.forEach(brand => {
+    mentionsByBrand[brand] = mentionStore.getAll({
+      brand,
+      startDate: getTimeframeDate(timeframe)
+    });
+  });
 
+  const brandTopics = {};
   Object.entries(mentionsByBrand).forEach(([brand, mentions]) => {
     brandTopics[brand] = extractTopics(mentions, 15);
   });
@@ -405,7 +388,7 @@ export function compareTopicsAcrossBrands(mentionsByBrand) {
       brandsUsing,
       sentimentByBrand: sentimentData,
       category: Object.values(categoryData)[0] || 'general',
-      commonality: parseFloat((brandsUsing / Object.keys(mentionsByBrand).length * 100).toFixed(1))
+      commonality: parseFloat((brandsUsing / brandList.length * 100).toFixed(1))
     };
   })
   .sort((a, b) => b.total - a.total)
@@ -415,7 +398,7 @@ export function compareTopicsAcrossBrands(mentionsByBrand) {
 }
 
 /**
- * NEW: Get topic themes (grouped categories)
+ * Get topic themes (grouped categories)
  */
 export function getTopicThemes(mentions) {
   const topics = extractTopics(mentions, 50);
@@ -449,7 +432,7 @@ export function getTopicThemes(mentions) {
 }
 
 /**
- * NEW: Detect emerging topics (new topics gaining traction)
+ * Detect emerging topics (new and rapidly growing)
  */
 export function detectEmergingTopics(mentions, limit = 5) {
   const now = Date.now();
@@ -472,15 +455,12 @@ export function detectEmergingTopics(mentions, limit = 5) {
 
   const recentKeywords = new Set(recentTopics.map(t => t.keyword));
 
-  // Find topics that are new (not in recent) or rapidly growing
   const emerging = veryRecentTopics
     .filter(topic => !recentKeywords.has(topic.keyword) || topic.count > 3)
     .map(topic => ({
       ...topic,
       isNew: !recentKeywords.has(topic.keyword),
-      growthRate: !recentKeywords.has(topic.keyword) 
-        ? 'new' 
-        : 'accelerating'
+      growthRate: !recentKeywords.has(topic.keyword) ? 'new' : 'accelerating'
     }))
     .slice(0, limit);
 

@@ -1,3 +1,4 @@
+// server/src/sources/newsAPI.js
 import fetch from 'node-fetch';
 import config from '../config/config.js';
 import { Mention } from '../models/Mention.js';
@@ -7,27 +8,19 @@ import { analyzeSentimentWithContext } from '../services/sentimentAnalyzer.js';
  * Fetch news mentions using News API
  */
 export async function fetchNewsMentions(brandName, limit = 20) {
-  // FIX: Use environment variable directly to bypass config caching issue
   const apiKey = process.env.NEWS_API_KEY || config.newsApiKey;
-  
-  console.log(`🔑 News API Key check:`, {
-    hasEnvVar: !!process.env.NEWS_API_KEY,
-    hasConfigKey: !!config.newsApiKey,
-    enabled: config.sources.news.enabled
-  });
   
   if (!config.sources.news.enabled || !apiKey) {
     console.log('⚠️  News API disabled or no API key configured');
     return [];
   }
-  // Rest of function...
 
   try {
     const mentions = await searchNews(brandName, limit, apiKey);
-    console.log(`✅ Fetched ${mentions.length} mentions from News API for "${brandName}"`);
-    return mentions; // ← Make sure this returns the mentions array
+    console.log(`✅ Fetched ${mentions.length} news mentions for "${brandName}"`);
+    return mentions; 
   } catch (error) {
-    console.error('News API fetch error:', error.message);
+    console.error(`❌ News API error for ${brandName}:`, error.message);
     return [];
   }
 }
@@ -44,42 +37,23 @@ async function searchNews(brandName, limit, apiKey) {
   });
 
   const url = `${config.sources.news.baseUrl}/everything?${params}`;
-
-  console.log(`📡 News API URL: ${url}`); // Debug log
-
   const response = await fetch(url, {
-    headers: {
-      'X-Api-Key': apiKey
-    }
+    headers: { 'X-Api-Key': apiKey }
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`❌ News API HTTP error: ${response.status}`, errorText);
-    throw new Error(`News API error: ${response.status}`);
+    throw new Error(`News API HTTP ${response.status}`);
   }
 
   const data = await response.json();
 
-  console.log(`📊 News API raw response for "${brandName}":`, {
-    status: response.status,
-    totalResults: data.totalResults,
-    articlesCount: data.articles?.length || 0
-  });
-
   if (!data.articles || data.articles.length === 0) {
-    console.log(`📭 No articles found for "${brandName}"`);
     return [];
   }
 
   const mentions = data.articles.map(article => {
-    const content = article.description || article.title || '';
-    const fullText = `${article.title} ${content}`;
-    
-    // Analyze sentiment
+    const fullText = `${article.title} ${article.description || ''}`;
     const sentimentResult = analyzeSentimentWithContext(fullText, brandName);
-
-    console.log(`📰 Processing article: "${article.title.substring(0, 50)}..."`); // Debug log
 
     return new Mention({
       brand: brandName,
@@ -106,7 +80,6 @@ async function searchNews(brandName, limit, apiKey) {
     });
   });
 
-  console.log(`✅ Created ${mentions.length} mention objects from News API`);
   return mentions;
 }
 
@@ -114,12 +87,9 @@ async function searchNews(brandName, limit, apiKey) {
  * Fetch top headlines mentioning the brand
  */
 export async function fetchTopHeadlines(brandName, category = 'business') {
-  // FIX: Use environment variable directly
   const apiKey = process.env.NEWS_API_KEY || config.newsApiKey;
   
-  if (!apiKey) {
-    return [];
-  }
+  if (!apiKey) return [];
 
   try {
     const params = new URLSearchParams({
@@ -130,16 +100,11 @@ export async function fetchTopHeadlines(brandName, category = 'business') {
     });
 
     const url = `${config.sources.news.baseUrl}/top-headlines?${params}`;
-
     const response = await fetch(url, {
-      headers: {
-        'X-Api-Key': apiKey
-      }
+      headers: { 'X-Api-Key': apiKey }
     });
 
-    if (!response.ok) {
-      return [];
-    }
+    if (!response.ok) return [];
 
     const data = await response.json();
     
@@ -173,7 +138,7 @@ export async function fetchTopHeadlines(brandName, category = 'business') {
     return mentions;
 
   } catch (error) {
-    console.error('Error fetching top headlines:', error.message);
+    console.error(`❌ Top headlines error for ${brandName}:`, error.message);
     return [];
   }
 }

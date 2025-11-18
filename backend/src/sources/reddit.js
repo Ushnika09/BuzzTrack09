@@ -15,23 +15,23 @@ export async function fetchRedditMentions(brandName, limit = 25) {
   const mentions = [];
 
   try {
-    // Search across multiple subreddits
     const subreddits = config.sources.reddit.subreddits;
     
-    for (const subreddit of subreddits.slice(0, 2)) { // Limit to 2 subreddits for speed
+    // Limit to 2 subreddits for speed
+    for (const subreddit of subreddits.slice(0, 2)) {
       try {
         const results = await searchReddit(brandName, subreddit, limit);
         mentions.push(...results);
       } catch (error) {
-        console.error(`Error fetching from r/${subreddit}:`, error.message);
+        console.error(`❌ Reddit r/${subreddit} error:`, error.message);
       }
     }
 
-    console.log(`✅ Fetched ${mentions.length} mentions from Reddit for "${brandName}"`);
+    console.log(`✅ Fetched ${mentions.length} Reddit mentions for "${brandName}"`);
     return mentions;
 
   } catch (error) {
-    console.error('Reddit fetch error:', error.message);
+    console.error(`❌ Reddit fetch error for ${brandName}:`, error.message);
     return [];
   }
 }
@@ -49,7 +49,7 @@ async function searchReddit(brandName, subreddit, limit) {
   });
 
   if (!response.ok) {
-    throw new Error(`Reddit API error: ${response.status}`);
+    throw new Error(`Reddit API HTTP ${response.status}`);
   }
 
   const data = await response.json();
@@ -63,12 +63,7 @@ async function searchReddit(brandName, subreddit, limit) {
     .map(child => {
       const post = child.data;
       const content = post.selftext || post.title || '';
-      
-      // Analyze sentiment
-      const sentimentResult = analyzeSentimentWithContext(
-        `${post.title} ${content}`,
-        brandName
-      );
+      const sentimentResult = analyzeSentimentWithContext(`${post.title} ${content}`, brandName);
 
       return new Mention({
         brand: brandName,
@@ -110,9 +105,7 @@ export async function fetchRedditHotPosts(subreddit, brandName, limit = 10) {
       }
     });
 
-    if (!response.ok) {
-      return [];
-    }
+    if (!response.ok) return [];
 
     const data = await response.json();
     const mentions = [];
@@ -151,7 +144,7 @@ export async function fetchRedditHotPosts(subreddit, brandName, limit = 10) {
     return mentions;
 
   } catch (error) {
-    console.error('Error fetching hot posts:', error.message);
+    console.error(`❌ Reddit hot posts error:`, error.message);
     return [];
   }
 }
