@@ -6,19 +6,20 @@ import { Server } from 'socket.io';
 import dotenv from 'dotenv';
 import apiRoutes from './routes/index.js';
 import { startDataCollection } from './services/dataCollector.js';
+import { setupSocketHandlers } from './socket/socketHandlers.js';
 
 dotenv.config();
 
-// 1️⃣ DEFINE allowedOrigins FIRST
+const app = express();
+const server = http.createServer(app);
+
+// Allowed origins for CORS
 const allowedOrigins = [
   "http://localhost:5173",
   "https://buzztrack.netlify.app"
 ];
 
-const app = express();
-const server = http.createServer(app);
-
-// 2️⃣ SOCKET.IO (after allowedOrigins)
+// Socket.IO setup
 const io = new Server(server, {
   cors: {
     origin: allowedOrigins,
@@ -26,7 +27,7 @@ const io = new Server(server, {
   }
 });
 
-// 3️⃣ EXPRESS CORS
+// Express middleware
 app.use(cors({
   origin: allowedOrigins,
   methods: ["GET", "POST", "PUT", "DELETE"],
@@ -36,36 +37,11 @@ app.use(cors({
 
 app.use(express.json());
 
-// Store active connections
+// Make io globally available
 global.io = io;
-global.activeSubscriptions = new Map();
 
-// Socket.io connection handling
-io.on('connection', (socket) => {
-  console.log('Client connected:', socket.id);
-
-  socket.on('subscribe', ({ brand }) => {
-    console.log(`Client ${socket.id} subscribed to: ${brand}`);
-
-    if (!global.activeSubscriptions.has(brand)) {
-      global.activeSubscriptions.set(brand, new Set());
-    }
-    global.activeSubscriptions.get(brand).add(socket.id);
-    socket.join(brand);
-  });
-
-  socket.on('unsubscribe', ({ brand }) => {
-    if (global.activeSubscriptions.has(brand)) {
-      global.activeSubscriptions.get(brand).delete(socket.id);
-    }
-    socket.leave(brand);
-  });
-
-  socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
-    global.activeSubscriptions.forEach((set) => set.delete(socket.id));
-  });
-});
+// Setup Socket.IO handlers
+setupSocketHandlers(io);
 
 // API routes
 app.use('/api', apiRoutes);
@@ -74,22 +50,53 @@ app.use('/api', apiRoutes);
 app.get('/health', (req, res) => {
   res.json({
     status: "ok",
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    error: "Not Found",
+    message: `Cannot ${req.method} ${req.path}`
   });
 });
 
 // Error handling
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
+  console.error('Server error:', err.stack);
+  res.status(err.status || 500).json({
     error: "Something went wrong!",
-    message: err.message
+    message: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message
   });
 });
 
+// Start server
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
-  console.log(`📊 Dashboard: http://localhost:${PORT}`);
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`📊 API available at http://localhost:${PORT}/api`);
+  console.log(`💬 WebSocket ready for connections`);
+  
+  // Start data collection
   startDataCollection();
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully...');
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('\nSIGINT received, shutting down gracefully...');
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
 });
