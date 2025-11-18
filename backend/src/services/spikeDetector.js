@@ -1,6 +1,6 @@
 // server/src/services/spikeDetector.js
 import config from '../config/config.js';
-import { mentionStore } from '../models/Mention.js';
+import { mentionStore } from '../models/MentionStore.js';
 
 /**
  * Detect conversation spikes for a brand

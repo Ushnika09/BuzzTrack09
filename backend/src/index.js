@@ -4,7 +4,7 @@ import cors from 'cors';
 import http from 'http';
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
-import apiRoutes from './routes/api.js';
+import apiRoutes from './routes/index.js';
 import { startDataCollection } from './services/dataCollector.js';
 
 dotenv.config();

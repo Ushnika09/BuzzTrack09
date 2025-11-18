@@ -1,5 +1,5 @@
 import config from '../config/config.js';
-import { mentionStore } from '../models/Mention.js';
+import { mentionStore } from '../models/MentionStore.js';
 import { fetchRedditMentions } from '../sources/reddit.js';
 import { fetchNewsMentions } from '../sources/newsAPI.js';
 import { fetchTwitterMentions } from '../sources/twitter.js';
